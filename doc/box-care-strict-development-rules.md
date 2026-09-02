@@ -14,9 +14,8 @@
 
 - Always create a branch from the latest `main` branch.
 - Do not work directly on `main`.
-- Create a separate branch for each assigned task or workstream.
 - Use clear branch names, for example `feature/storefront-home`, `feature/admin-products`, `feature/checkout-flow`, or `fix/mobile-header`.
-- Keep commits focused on the assigned task.
+- Keep commits focused and easy to review.
 - Pull the latest `main` before opening a pull request.
 - Ask for review before merging into `main`.
 

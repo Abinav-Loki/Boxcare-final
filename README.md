@@ -20,7 +20,7 @@ git pull origin main
 git checkout -b feature/your-task-name
 ```
 
-Do not work directly on `main`. Use one branch per task or workstream and ask for review before merging.
+Do not work directly on `main`. Work on your created branch and ask for review before merging.
 
 ## Setup
 
