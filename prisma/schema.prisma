@@ -1,0 +1,11 @@
+// Prisma schema placeholder for the Box Care ecommerce platform.
+// Developer B owns the first complete schema pass.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
