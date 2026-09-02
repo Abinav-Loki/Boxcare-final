@@ -4,9 +4,7 @@ type AdminProductPageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function AdminProductPage({
-  params,
-}: AdminProductPageProps) {
+export default async function AdminProductPage({ params }: AdminProductPageProps) {
   const { id } = await params;
 
   return (

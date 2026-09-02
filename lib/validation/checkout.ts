@@ -8,7 +8,10 @@ export const checkoutSchema = z.object({
   addressLine2: z.string().trim().optional(),
   city: z.string().trim().min(2),
   state: z.string().trim().min(2),
-  pincode: z.string().trim().regex(/^[1-9][0-9]{5}$/),
+  pincode: z
+    .string()
+    .trim()
+    .regex(/^[1-9][0-9]{5}$/),
   companyName: z.string().trim().optional(),
   gstNumber: z.string().trim().optional(),
   couponCode: z.string().trim().optional(),

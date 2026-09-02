@@ -2,6 +2,26 @@
 
 Production Next.js foundation for the Box Care ecommerce platform.
 
+## Project Docs
+
+Start from the cloned project root on your machine.
+
+- `doc/box-care-final-ui-nextjs-implementation-plan.md` is the full architecture and feature plan.
+- `doc/box-care-strict-development-rules.md` is mandatory before coding.
+- `AGENTS.md` contains Next.js-specific agent/runtime rules and should not be removed.
+
+## Git Workflow
+
+Create a branch from the latest `main` and work on that branch:
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/your-task-name
+```
+
+Do not work directly on `main`. Use one branch per task or workstream and ask for review before merging.
+
 ## Setup
 
 1. Install dependencies:
@@ -30,6 +50,11 @@ npm run dev
 npm run dev
 npm run build
 npm run lint
+npm run format
+npm run format:check
+npm run test
+npm run test:watch
+npm run test:e2e
 npm run db:generate
 npm run db:migrate
 npm run db:studio
@@ -75,6 +100,9 @@ Developer C owns commerce/shipment/QA:
 
 ## Project Rules
 
+- Read `doc/box-care-strict-development-rules.md` before starting work.
+- Reuse existing components, helpers, constants, and validation schemas before creating new ones.
+- Search the codebase before adding a new route, component, helper, type, or constant.
 - Use the single Box Care theme in `app/globals.css`.
 - Do not hardcode random colors in components.
 - Keep business logic in `lib/*`, not page components.

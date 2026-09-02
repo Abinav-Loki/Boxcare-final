@@ -1,4 +1,5 @@
 // Seed placeholder.
-// Convert ecom/Box-care-main/products.json and category data into database seed records here.
+// Convert product/category content from the deployed finalized UI into database seed records here:
+// https://boxcare-c881.vercel.app/
 
 export {};

@@ -14,13 +14,7 @@ export const orderStatuses = [
   "REFUNDED",
 ] as const;
 
-export const paymentStatuses = [
-  "PENDING",
-  "SUCCESS",
-  "FAILED",
-  "CANCELLED",
-  "REFUNDED",
-] as const;
+export const paymentStatuses = ["PENDING", "SUCCESS", "FAILED", "CANCELLED", "REFUNDED"] as const;
 
 export const shipmentStatuses = [
   "NOT_SHIPPED",

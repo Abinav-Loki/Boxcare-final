@@ -16,7 +16,11 @@ export const productVariantSchema = z.object({
 
 export const productSchema = z.object({
   name: z.string().trim().min(2),
-  slug: z.string().trim().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   categoryId: z.string().trim().min(1),
   description: z.string().trim().optional(),
   status: productStatusSchema.default("DRAFT"),
