@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./boxcare-old.css";
+
 
 :root {
   --background: #ffffff;
