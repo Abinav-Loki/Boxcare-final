@@ -8,8 +8,11 @@ import { AllTypePackingMaterial } from "@/components/store/all-type-packing-mate
 import { BuilderSection3D } from "@/components/store/builder-section-3d";
 import { NewsletterSection } from "@/components/store/newsletter-section";
 import { CATEGORIES } from "@/lib/products-data";
+import { useLiveCms } from "@/lib/cms-data";
 
 export default function HomePage() {
+  const { cms } = useLiveCms();
+
   return (
     <div>
       {/* 1. HERO BANNER SLIDER */}
@@ -20,10 +23,10 @@ export default function HomePage() {
         <div className="container">
           <div className="section-head reveal-up" style={{ textAlign: "center", marginBottom: "36px" }}>
             <h2 className="section-title" style={{ fontSize: "2.2rem", fontWeight: 800, color: "var(--charcoal)", marginBottom: "8px" }}>
-              Our Products
+              {cms.categoriesSection.title}
             </h2>
             <p className="section-sub" style={{ fontSize: "1rem", color: "var(--charcoal-lt)" }}>
-              High-quality packaging solutions for every need
+              {cms.categoriesSection.subtitle}
             </p>
           </div>
           <div className="category-grid">

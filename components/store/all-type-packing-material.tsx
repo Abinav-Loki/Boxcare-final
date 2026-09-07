@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCart } from "./cart-context";
 import { PRODUCTS, getUnitPrice } from "@/lib/products-data";
+import { useLiveCms } from "@/lib/cms-data";
 
 export function AllTypePackingMaterial() {
   const [activeTab, setActiveTab] = useState<string>("all");
-  const { addToCart } = useCart();
+  const { addToCart, toggleWishlist, isInWishlist } = useCart();
+  const { cms } = useLiveCms();
 
   const allItems = [
     {
@@ -149,7 +151,7 @@ export function AllTypePackingMaterial() {
         <div className="pm-header-wrap">
           <div className="pm-title-line">
             <span className="pm-line"></span>
-            <h2 className="pm-section-title">All Type Packing Material</h2>
+            <h2 className="pm-section-title">{cms.packingMaterialSection.title}</h2>
             <span className="pm-line"></span>
           </div>
           <Link href="/products" className="pm-view-all-link">
@@ -193,9 +195,59 @@ export function AllTypePackingMaterial() {
 
         {/* 4-Column Product Grid */}
         <div className="parul-grid" id="parul-products-grid">
-          {filteredItems.map((item, idx) => (
-            <div key={idx} className="parul-card pm-item">
+          {filteredItems.map((item, idx) => {
+            const isWished = isInWishlist(item.product.id);
+            return (
+            <div key={idx} className="parul-card pm-item" style={{ position: "relative" }}>
               <span className="parul-badge">{item.badge}</span>
+              {/* Favorites Heart Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleWishlist(item.product.id);
+                }}
+                aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                title={isWished ? "Remove from favorites" : "Add to favorites"}
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  zIndex: 10,
+                  background: isWished ? "#FEF2F2" : "#FFFFFF",
+                  border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                  borderRadius: "50%",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  cursor: "pointer",
+                  transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                  transform: isWished ? "scale(1.05)" : "scale(1)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
+                }}
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill={isWished ? "#EF4444" : "none"}
+                  stroke={isWished ? "#EF4444" : "#7A6E65"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
               <div className="parul-img-box">
                 <Link href={`/product/${item.product.slug}`}>
                   <img src={item.product.image} alt={item.name} />
@@ -217,7 +269,8 @@ export function AllTypePackingMaterial() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

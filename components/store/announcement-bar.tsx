@@ -1,24 +1,29 @@
 "use client";
 
+import { useLiveCms } from "@/lib/cms-data";
+
 export function AnnouncementBar() {
+  const { cms } = useLiveCms();
+  const { message1, message2, message3, message4 } = cms.announcement;
+
   return (
     <div className="announce-bar" id="announce-bar">
       <div className="announce-track">
-        <span>🎉 Get <strong>10% off</strong> your first bulk order — Use code <strong>BOXCARE10</strong></span>
+        <span>{message1}</span>
         <span className="ann-sep">•</span>
-        <span>🚚 <strong>Free shipping</strong> on orders above ₹2,000</span>
+        <span>{message2}</span>
         <span className="ann-sep">•</span>
-        <span>♻️ 100% <strong>Eco-friendly</strong> packaging materials</span>
+        <span>{message3}</span>
         <span className="ann-sep">•</span>
-        <span>📦 MOQ as low as <strong>50 boxes</strong></span>
+        <span>{message4}</span>
         <span className="ann-sep">•</span>
-        <span>🎉 Get <strong>10% off</strong> your first bulk order — Use code <strong>BOXCARE10</strong></span>
+        <span>{message1}</span>
         <span className="ann-sep">•</span>
-        <span>🚚 <strong>Free shipping</strong> on orders above ₹2,000</span>
+        <span>{message2}</span>
         <span className="ann-sep">•</span>
-        <span>♻️ 100% <strong>Eco-friendly</strong> packaging materials</span>
+        <span>{message3}</span>
         <span className="ann-sep">•</span>
-        <span>📦 MOQ as low as <strong>50 boxes</strong></span>
+        <span>{message4}</span>
       </div>
     </div>
   );

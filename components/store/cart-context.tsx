@@ -22,6 +22,8 @@ interface CartContextType {
   quickViewProduct: Product | null;
   setQuickViewProduct: (product: Product | null) => void;
   wishlist: string[];
+  isWishlistOpen: boolean;
+  setIsWishlistOpen: (open: boolean) => void;
   toggleWishlist: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
 }
@@ -31,6 +33,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -130,6 +133,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quickViewProduct,
         setQuickViewProduct,
         wishlist,
+        isWishlistOpen,
+        setIsWishlistOpen,
         toggleWishlist,
         isInWishlist,
       }}

@@ -2,8 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
+import { useLiveCms } from "@/lib/cms-data";
 
 export function ShopByIndustry() {
+  const { cms } = useLiveCms();
   const industries = [
     {
       id: "ind-food",
@@ -66,8 +68,8 @@ export function ShopByIndustry() {
       <div className="container">
         <div className="section-head reveal-up">
           <span className="section-tag">Industries We Serve</span>
-          <h2 className="section-title">Shop by Industry</h2>
-          <p className="section-sub">Packaging solutions tailored for every sector — from food to fashion.</p>
+          <h2 className="section-title">{cms.industrySection.title}</h2>
+          <p className="section-sub">{cms.industrySection.subtitle}</p>
         </div>
         <div className="industry-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
           {industries.map((ind) => (

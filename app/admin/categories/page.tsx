@@ -1,11 +1,6 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+import React from "react";
+import { CategoriesManager } from "@/components/admin/categories/categories-manager";
 
 export default function AdminCategoriesPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer B"
-      title="Admin Categories"
-      description="Category CRUD with parent category, slug, image, sort order, active state, featured flag, and SEO fields."
-    />
-  );
+  return <CategoriesManager />;
 }

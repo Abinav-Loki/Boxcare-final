@@ -12,7 +12,8 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const slug = (params?.slug as string) || "";
   const product = getProductBySlug(slug) || PRODUCTS[0];
-  const { addToCart } = useCart();
+  const { addToCart, toggleWishlist, isInWishlist } = useCart();
+  const isWished = isInWishlist(product.id);
 
   const [selectedQty, setSelectedQty] = useState<number>(50);
   const [customQtyInput, setCustomQtyInput] = useState<string>("");
@@ -96,6 +97,49 @@ export default function ProductDetailPage() {
               <span style={{ position: "absolute", top: "16px", left: "16px", background: "#D68A45", color: "#FFF", fontSize: "0.75rem", fontWeight: 700, padding: "4px 12px", borderRadius: "12px", textTransform: "uppercase" }}>
                 {product.category}
               </span>
+              <button
+                type="button"
+                onClick={() => toggleWishlist(product.id)}
+                aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                title={isWished ? "Remove from favorites" : "Add to favorites"}
+                style={{
+                  position: "absolute",
+                  top: "16px",
+                  right: "16px",
+                  background: isWished ? "#FEF2F2" : "#FFFFFF",
+                  border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                  borderRadius: "50%",
+                  width: "42px",
+                  height: "42px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  cursor: "pointer",
+                  transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                  transform: isWished ? "scale(1.05)" : "scale(1)",
+                  zIndex: 5,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill={isWished ? "#EF4444" : "none"}
+                  stroke={isWished ? "#EF4444" : "#7A6E65"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
               <img src={product.image} alt={product.name} style={{ maxWidth: "100%", maxHeight: "320px", objectFit: "contain" }} />
             </div>
           </div>
@@ -202,12 +246,44 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Buying Buttons */}
-            <div style={{ display: "flex", gap: "16px" }}>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
               <button className="btn-primary" style={{ flex: 1, padding: "16px", justifyContent: "center", fontSize: "1rem" }} onClick={handleAddToCart}>
                 🛍️ Add to Cart
               </button>
               <button className="btn-secondary" style={{ flex: 1, padding: "16px", justifyContent: "center", fontSize: "1rem" }} onClick={handleBuyNow}>
                 ⚡ Buy Now
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleWishlist(product.id)}
+                aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                title={isWished ? "Remove from favorites" : "Add to favorites"}
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "12px",
+                  background: isWished ? "#FEF2F2" : "#FAF7F2",
+                  border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill={isWished ? "#EF4444" : "none"}
+                  stroke={isWished ? "#EF4444" : "#7A6E65"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
               </button>
             </div>
           </div>

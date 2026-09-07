@@ -2,16 +2,33 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useLiveCms } from "@/lib/cms-data";
 
 export function HeroBannerSlider() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isCmsMode, setIsCmsMode] = useState(false);
+  const { cms } = useLiveCms();
 
   useEffect(() => {
+    // Detect if running inside the Admin Studio iframe or has ?cms_mode=true
+    const inIframe = typeof window !== "undefined" && window.self !== window.top;
+    const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const hasCmsParam = urlParams?.get("cms_mode") === "true";
+
+    if (inIframe || hasCmsParam) {
+      setIsCmsMode(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Disable auto-slide scrolling ONLY when in admin edit CMS mode
+    if (isCmsMode) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % 3);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isCmsMode]);
 
   return (
     <section className="hero-slider swiper" id="home">
@@ -29,6 +46,7 @@ export function HeroBannerSlider() {
 
       {/* Slide 1: Custom Packaging */}
       <div
+        data-slide="1"
         className={`hero-slide ${currentSlide === 0 ? "active" : ""}`}
         style={{
           display: currentSlide === 0 ? "flex" : "none",
@@ -49,17 +67,17 @@ export function HeroBannerSlider() {
                 <path d="M 4 62 L 4 76 L 18 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
                 <path d="M 216 62 L 216 76 L 202 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
               </svg>
-              <span className="stamp-text">Custom<br />Packaging</span>
+              <span className="stamp-text">{cms.heroSlide1.badge}</span>
             </div>
           </div>
 
           {/* Center Content */}
           <div className="hero-slide-content">
             <h1 className="hero-slide-title" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: "#2E1A0C", fontWeight: 900 }}>
-              Your Brand Deserves<br />Better Packaging.
+              {cms.heroSlide1.title}
             </h1>
             <p className="hero-slide-subtitle">
-              Create custom boxes that protect your products and leave a lasting impression.
+              {cms.heroSlide1.subtitle}
             </p>
             <div className="hero-slide-features">
               <div className="feature-item">
@@ -79,7 +97,7 @@ export function HeroBannerSlider() {
             </div>
             <div className="hero-slide-action">
               <Link href="/custom-boxes" className="hero-slide-btn">
-                <span>Shop Custom Boxes</span>
+                <span>{cms.heroSlide1.primaryBtn}</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </Link>
             </div>
@@ -115,6 +133,7 @@ export function HeroBannerSlider() {
 
       {/* Slide 2: Eco-friendly Packaging */}
       <div
+        data-slide="2"
         className={`hero-slide ${currentSlide === 1 ? "active" : ""}`}
         style={{
           display: currentSlide === 1 ? "flex" : "none",
@@ -134,16 +153,16 @@ export function HeroBannerSlider() {
                 <path d="M 4 62 L 4 76 L 18 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
                 <path d="M 216 62 L 216 76 L 202 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
               </svg>
-              <span className="stamp-text">Eco-Friendly<br />Packaging</span>
+              <span className="stamp-text">{cms.heroSlide2.badge}</span>
             </div>
           </div>
 
           <div className="hero-slide-content">
             <h1 className="hero-slide-title" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: "#2E1A0C", fontWeight: 900 }}>
-              Sustainable Packaging<br />for a Greener Future.
+              {cms.heroSlide2.title}
             </h1>
             <p className="hero-slide-subtitle">
-              Choose eco-friendly packaging solutions without compromising on quality or style.
+              {cms.heroSlide2.subtitle}
             </p>
             <div className="hero-slide-features">
               <div className="feature-item">
@@ -163,7 +182,7 @@ export function HeroBannerSlider() {
             </div>
             <div className="hero-slide-action">
               <Link href="/products" className="hero-slide-btn">
-                <span>Explore Eco Collection</span>
+                <span>{cms.heroSlide2.primaryBtn}</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </Link>
             </div>
@@ -200,6 +219,7 @@ export function HeroBannerSlider() {
 
       {/* Slide 3: Bulk Orders */}
       <div
+        data-slide="3"
         className={`hero-slide ${currentSlide === 2 ? "active" : ""}`}
         style={{
           display: currentSlide === 2 ? "flex" : "none",
@@ -219,16 +239,16 @@ export function HeroBannerSlider() {
                 <path d="M 4 62 L 4 76 L 18 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
                 <path d="M 216 62 L 216 76 L 202 76" fill="none" stroke="#8B5E3C" strokeWidth="2" />
               </svg>
-              <span className="stamp-text">Bulk Order<br />Benefits</span>
+              <span className="stamp-text">{cms.heroSlide3.badge}</span>
             </div>
           </div>
 
           <div className="hero-slide-content">
             <h1 className="hero-slide-title" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: "#2E1A0C", fontWeight: 900 }}>
-              Packaging That Grows<br />With Your Business.
+              {cms.heroSlide3.title}
             </h1>
             <p className="hero-slide-subtitle">
-              From startups to large-scale brands, we deliver reliable packaging at competitive prices.
+              {cms.heroSlide3.subtitle}
             </p>
             <div className="hero-slide-features">
               <div className="feature-item">
@@ -248,7 +268,7 @@ export function HeroBannerSlider() {
             </div>
             <div className="hero-slide-action">
               <Link href="/bulk-orders" className="hero-slide-btn">
-                <span>Get A Free Quote</span>
+                <span>{cms.heroSlide3.primaryBtn}</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </Link>
             </div>

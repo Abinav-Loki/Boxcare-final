@@ -1,11 +1,8 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+"use client";
+
+import React from "react";
+import { CouponsManager } from "@/components/admin/coupons/coupons-manager";
 
 export default function AdminCouponsPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer B"
-      title="Admin Coupons"
-      description="Coupon manager for code, discount type/value, minimum order, date range, usage limit, and active state."
-    />
-  );
+  return <CouponsManager />;
 }

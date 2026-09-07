@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useLiveCms } from "@/lib/cms-data";
 
 export function NewsletterSection() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const { cms } = useLiveCms();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +27,8 @@ export function NewsletterSection() {
               <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" />
             </svg>
           </div>
-          <h2>Stay Updated</h2>
-          <p>Get packaging tips, exclusive deals, and new product alerts delivered to your inbox.</p>
+          <h2>{cms.newsletterSection.title}</h2>
+          <p>{cms.newsletterSection.subtitle}</p>
 
           {subscribed ? (
             <div style={{ background: "rgba(76, 175, 80, 0.2)", border: "1px solid #4CAF50", color: "#4CAF50", padding: "14px 20px", borderRadius: "8px", fontWeight: 700 }}>
@@ -48,7 +50,7 @@ export function NewsletterSection() {
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
-                Subscribe
+                {cms.newsletterSection.btnText || "Subscribe"}
               </button>
             </form>
           )}

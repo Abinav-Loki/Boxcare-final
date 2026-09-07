@@ -235,221 +235,457 @@ export function BulkOrdersPage() {
             </div>
           ) : (
             <form
-              className="bs-form"
               id="bulk-order-form"
               onSubmit={handleSubmit}
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "18px",
+                gap: "20px",
                 background: "#FFFFFF",
-                padding: "36px",
-                borderRadius: "16px",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.04)",
-                border: "1px solid #ECE4DA",
+                padding: "40px",
+                borderRadius: "20px",
+                boxShadow: "0 10px 40px rgba(92, 58, 34, 0.08)",
+                border: "1px solid #EAE0D5",
               }}
             >
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              {/* Row 1: Name & Company */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
                 <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="bs-input"
-                    placeholder="Your Name"
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    className="bs-input"
-                    placeholder="Company / Brand"
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    WhatsApp / Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="bs-input"
-                    placeholder="Phone Number"
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="bs-input"
-                    placeholder="name@company.com"
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    Item Type *
-                  </label>
-                  <select
-                    name="itemType"
-                    value={formData.itemType}
-                    onChange={handleChange}
-                    required
-                    className="bs-input"
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      height: "46px",
-                      fontSize: "0.9rem",
-                    }}
+                  <label
+                    htmlFor="fullName"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
                   >
-                    <option value="mailer-boxes">Mailer Boxes</option>
-                    <option value="corrugated-boxes">Corrugated Boxes</option>
-                    <option value="shipping-boxes">Shipping Boxes</option>
-                    <option value="pizza-boxes">Pizza Boxes</option>
-                    <option value="mono-cartons">Mono Cartons</option>
-                    <option value="courier-bags">Courier Bags</option>
-                    <option value="paper-bags">Paper Bags</option>
-                    <option value="tapes">Tape Rolls</option>
-                    <option value="bubble-wrap">Bubble Wrap</option>
-                    <option value="corrugated-rolls">Corrugated Rolls</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                    Monthly Quantity Needed *
+                    Full Name <span style={{ color: "#DC2626" }}>*</span>
                   </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    className="bs-input"
-                    placeholder="e.g. 1000"
-                    min="500"
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #EDE3D4",
-                      background: "#FAF7F2",
-                      fontSize: "0.9rem",
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                    <input
+                      id="fullName"
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      placeholder="e.g. Rahul Sharma"
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="companyName"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                  >
+                    Company / Brand Name <span style={{ color: "#DC2626" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                      </svg>
+                    </div>
+                    <input
+                      id="companyName"
+                      type="text"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      placeholder="e.g. Apex Retail Pvt Ltd"
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Row 2: Phone & Email */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
+                <div>
+                  <label
+                    htmlFor="phone"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                  >
+                    WhatsApp / Phone Number <span style={{ color: "#DC2626" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      </svg>
+                    </div>
+                    <input
+                      id="phone"
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="+91 98765 43210"
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="email"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                  >
+                    Business Email Address <span style={{ color: "#DC2626" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      </svg>
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="name@company.com"
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Item Type & Quantity */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
+                <div>
+                  <label
+                    htmlFor="itemType"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                  >
+                    Item Category <span style={{ color: "#DC2626" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                      </svg>
+                    </div>
+                    <select
+                      id="itemType"
+                      name="itemType"
+                      value={formData.itemType}
+                      onChange={handleChange}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        height: "46px",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        cursor: "pointer",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <option value="mailer-boxes">Mailer Boxes</option>
+                      <option value="corrugated-boxes">Corrugated Cartons</option>
+                      <option value="shipping-boxes">Shipping Cartons</option>
+                      <option value="pizza-boxes">Pizza & Food Boxes</option>
+                      <option value="mono-cartons">Mono Cartons & Sleeves</option>
+                      <option value="courier-bags">Poly Courier Bags</option>
+                      <option value="paper-bags">Eco Kraft Paper Bags</option>
+                      <option value="tapes">Adhesive & Kraft Tapes</option>
+                      <option value="bubble-wrap">Air Bubble Wrap Rolls</option>
+                      <option value="corrugated-rolls">Corrugated Rolls & Sheets</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="quantity"
+                    style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                  >
+                    Estimated Monthly Quantity <span style={{ color: "#DC2626" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#8C7E72",
+                        display: "flex",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="4" y1="9" x2="20" y2="9" />
+                        <line x1="4" y1="15" x2="20" y2="15" />
+                        <line x1="10" y1="3" x2="8" y2="21" />
+                        <line x1="16" y1="3" x2="14" y2="21" />
+                      </svg>
+                    </div>
+                    <input
+                      id="quantity"
+                      type="number"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleChange}
+                      placeholder="e.g. 2500 pcs"
+                      min="100"
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #D8C9B4",
+                        background: "#FFFFFF",
+                        color: "#1F1A16",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        transition: "border-color 0.2s, box-shadow 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#5C3A22";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#D8C9B4";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Requirements Description */}
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2B2B2B", marginBottom: "6px", display: "block" }}>
-                  Requirements Description *
+                <label
+                  htmlFor="description"
+                  style={{ fontSize: "13px", fontWeight: 700, color: "#1F1A16", marginBottom: "6px", display: "block" }}
+                >
+                  Custom Box Dimensions & Printing Requirements <span style={{ color: "#DC2626" }}>*</span>
                 </label>
                 <textarea
+                  id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="bs-input"
                   rows={4}
-                  placeholder="Enter target box dimensions, printing specifications, or target budget details here..."
+                  placeholder="Please specify box dimensions (L × W × H in inches/cm), paper GSM, single/multi-color printing artwork, delivery pincode, or target budget..."
                   style={{
                     width: "100%",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid #EDE3D4",
-                    background: "#FAF7F2",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "1.5px solid #D8C9B4",
+                    background: "#FFFFFF",
+                    color: "#1F1A16",
                     fontFamily: "inherit",
-                    fontSize: "0.9rem",
+                    fontSize: "14px",
+                    outline: "none",
+                    boxSizing: "border-box",
                     resize: "vertical",
+                    lineHeight: 1.5,
+                    transition: "border-color 0.2s, box-shadow 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#5C3A22";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 58, 34, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#D8C9B4";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                   required
                 ></textarea>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
-                className="btn-primary"
                 style={{
-                  padding: "14px",
+                  padding: "15px 24px",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "8px",
-                  background: "#8B5E3C",
+                  gap: "10px",
+                  background: "#5C3A22",
                   color: "#FFFFFF",
                   border: "none",
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   fontWeight: 700,
-                  fontSize: "0.95rem",
+                  fontSize: "15px",
                   cursor: "pointer",
-                  marginTop: "8px",
+                  marginTop: "6px",
+                  boxShadow: "0 4px 14px rgba(92, 58, 34, 0.2)",
+                  transition: "background 0.2s ease, transform 0.1s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#472C19";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#5C3A22";
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
-                <span>Submit Bulk Quote Request</span>
+                <span>Submit Wholesale Quote Inquiry</span>
               </button>
             </form>
           )}

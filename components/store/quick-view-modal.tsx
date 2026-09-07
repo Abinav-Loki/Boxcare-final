@@ -7,12 +7,13 @@ import { getUnitPrice } from "@/lib/products-data";
 
 export function QuickViewModal() {
   const router = useRouter();
-  const { quickViewProduct, setQuickViewProduct, addToCart } = useCart();
+  const { quickViewProduct, setQuickViewProduct, addToCart, toggleWishlist, isInWishlist } = useCart();
   const [selectedQty, setSelectedQty] = useState<number>(50);
 
   if (!quickViewProduct) return null;
 
   const product = quickViewProduct;
+  const isWished = isInWishlist(product.id);
   const unitPrice = getUnitPrice(product, selectedQty);
   const totalPrice = unitPrice * selectedQty;
 
@@ -35,8 +36,51 @@ export function QuickViewModal() {
         </button>
         <div className="iv-modal-body">
           {/* Left: Product Image */}
-          <div className="iv-modal-left">
+          <div className="iv-modal-left" style={{ position: "relative" }}>
             <span className="iv-badge">In Stock • Factory Direct</span>
+            <button
+              type="button"
+              onClick={() => toggleWishlist(product.id)}
+              aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+              title={isWished ? "Remove from favorites" : "Add to favorites"}
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                background: isWished ? "#FEF2F2" : "#FFFFFF",
+                border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                borderRadius: "50%",
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                cursor: "pointer",
+                transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                transform: isWished ? "scale(1.05)" : "scale(1)",
+                zIndex: 10,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.15)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={isWished ? "#EF4444" : "none"}
+                stroke={isWished ? "#EF4444" : "#7A6E65"}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
             <div className="iv-img-box">
               <img src={product.image} alt={product.name} id="iv-modal-img" />
             </div>
@@ -110,12 +154,44 @@ export function QuickViewModal() {
             </div>
 
             {/* Action Buttons */}
-            <div className="iv-actions" style={{ display: "flex", gap: "12px" }}>
+            <div className="iv-actions" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button className="btn-primary" style={{ flex: 1 }} onClick={handleAddToCart}>
                 🛍️ Add to Cart
               </button>
               <button className="btn-secondary" style={{ flex: 1 }} onClick={handleBuyNow}>
                 ⚡ Buy Now
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleWishlist(product.id)}
+                aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                title={isWished ? "Remove from favorites" : "Add to favorites"}
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "10px",
+                  background: isWished ? "#FEF2F2" : "#FAF7F2",
+                  border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill={isWished ? "#EF4444" : "none"}
+                  stroke={isWished ? "#EF4444" : "#7A6E65"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
               </button>
             </div>
           </div>

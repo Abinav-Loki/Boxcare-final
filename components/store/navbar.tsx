@@ -9,7 +9,7 @@ import { PRODUCTS, Product } from "@/lib/products-data";
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { cartCount, setIsCartOpen, wishlist, addToCart } = useCart();
+  const { cartCount, setIsCartOpen, wishlist, isWishlistOpen, setIsWishlistOpen, toggleWishlist, isInWishlist, addToCart } = useCart();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -322,10 +322,11 @@ export function Navbar() {
           {/* Wishlist Button */}
           <button
             className="icon-btn wishlist-btn"
-            aria-label="Wishlist"
-            onClick={() => router.push("/products")}
+            aria-label="Favorites"
+            id="wishlist-toggle-btn"
+            onClick={() => setIsWishlistOpen(true)}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={wishlist.length > 0 ? "#EF4444" : "none"} stroke={wishlist.length > 0 ? "#EF4444" : "currentColor"} strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
             {wishlist.length > 0 && <span className="badge">{wishlist.length}</span>}
@@ -336,7 +337,7 @@ export function Navbar() {
             className="icon-btn"
             aria-label="Account"
             id="account-toggle-btn"
-            onClick={() => router.push("/admin/login")}
+            onClick={() => router.push("/signin")}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -565,6 +566,7 @@ export function Navbar() {
                 {searchResults.map((prod) => {
                   const minPrice = (prod.prices["500"] / 500).toFixed(2);
                   const maxPrice = (prod.prices["50"] / 50).toFixed(2);
+                  const isWished = isInWishlist(prod.id);
                   return (
                     <div
                       key={prod.id}
@@ -731,6 +733,31 @@ export function Navbar() {
             <Link href="/industries" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>Industries</Link>
             <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>About Us</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>Contact & FAQs</Link>
+            <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid #E5D8C8" }}>
+              <Link
+                href="/signin"
+                onClick={() => setIsMobileMenuOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "10px",
+                  backgroundColor: "#5C3A22",
+                  color: "#FFFFFF",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Sign In / Register</span>
+              </Link>
+            </div>
           </div>
         </div>
       )}

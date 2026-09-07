@@ -6,7 +6,7 @@ import { PRODUCTS, Product } from "@/lib/products-data";
 import { useCart } from "@/components/store/cart-context";
 
 export default function ProductsPage() {
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart, setIsCartOpen, toggleWishlist, isInWishlist } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLengths, setSelectedLengths] = useState<number[]>([]);
@@ -499,11 +499,63 @@ export default function ProductsPage() {
                     </button>
                   </div>
                 ) : (
-                  filteredProducts.map((product) => (
-                    <div key={product.id} className="premium-prod-card" id={`card-${product.id}`}>
-                      <Link href={`/product/${product.slug}`} className="premium-card-img-wrap">
-                        <img src={product.image} alt={product.name} loading="lazy" />
-                      </Link>
+                  filteredProducts.map((product) => {
+                    const isWished = isInWishlist(product.id);
+                    return (
+                    <div key={product.id} className="premium-prod-card" id={`card-${product.id}`} style={{ position: "relative" }}>
+                      <div className="premium-card-img-wrap" style={{ position: "relative" }}>
+                        <Link href={`/product/${product.slug}`} style={{ display: "block", width: "100%", height: "100%" }}>
+                          <img src={product.image} alt={product.name} loading="lazy" />
+                        </Link>
+                        {/* Favorite Heart Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleWishlist(product.id);
+                          }}
+                          aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                          title={isWished ? "Remove from favorites" : "Add to favorites"}
+                          style={{
+                            position: "absolute",
+                            top: "12px",
+                            right: "12px",
+                            zIndex: 10,
+                            background: isWished ? "#FEF2F2" : "#FFFFFF",
+                            border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                            borderRadius: "50%",
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                            cursor: "pointer",
+                            transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                            transform: isWished ? "scale(1.05)" : "scale(1)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "scale(1.15)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
+                          }}
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill={isWished ? "#EF4444" : "none"}
+                            stroke={isWished ? "#EF4444" : "#7A6E65"}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="premium-card-body">
                         <Link href={`/product/${product.slug}`} style={{ textDecoration: "none" }}>
                           <h3 className="premium-card-title">{product.name}</h3>
@@ -582,7 +634,8 @@ export default function ProductsPage() {
                         </div>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </main>

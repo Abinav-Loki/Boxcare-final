@@ -2,8 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
+import { useLiveCms } from "@/lib/cms-data";
 
 export function BuilderSection3D() {
+  const { cms } = useLiveCms();
+
   return (
     <section className="builder-section section" id="builder" style={{ background: "var(--charcoal)", color: "#fff", padding: "80px 0" }}>
       <div className="builder-bg">
@@ -13,12 +16,12 @@ export function BuilderSection3D() {
       <div className="container" style={{ maxWidth: "1100px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "48px", alignItems: "center" }}>
           <div>
-            <span className="section-tag light" style={{ letterSpacing: "0.12em" }}>Interactive 3D Design Studio</span>
+            <span className="section-tag light" style={{ letterSpacing: "0.12em" }}>{cms.builderSection.badge}</span>
             <h2 className="section-title light" style={{ marginTop: "12px", fontSize: "clamp(2rem, 3vw, 2.7rem)", lineHeight: 1.25 }}>
-              Interactive 3D Box Configurator
+              {cms.builderSection.title}
             </h2>
             <p className="section-sub light" style={{ marginBottom: "28px", fontSize: "1rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.65 }}>
-              Design and order custom corrugated packaging engineered for your exact product specifications. Select structural box styles, board materials, custom dimensions, upload your brand logo, and view real-time 3D rotation with automated volume discount pricing.
+              {cms.builderSection.subtitle}
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginBottom: "32px" }}>
@@ -56,7 +59,7 @@ export function BuilderSection3D() {
             </div>
 
             <Link href="/custom-boxes" className="btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "16px 32px", fontSize: "1.05rem", fontWeight: 700, borderRadius: "14px" }}>
-              📦 Launch 3D Box Configurator
+              📦 {cms.builderSection.ctaText || "Launch 3D Box Configurator"}
             </Link>
           </div>
 
