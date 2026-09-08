@@ -125,8 +125,9 @@ export function OrdersManager() {
       title: `Update Status: Order #${num}`,
       message: "Are you sure you want to do this?",
       description: `Change fulfillment status of order #${num} to "${newStatus}".`,
+      defaultCommitPreview: "Order status changed",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
         );
@@ -135,7 +136,7 @@ export function OrdersManager() {
         }
         showToast(`Order status updated to ${newStatus}`);
 
-        const res = await updateOrderStatusAction(orderId, newStatus);
+        const res = await updateOrderStatusAction(orderId, newStatus, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadOrders();
@@ -161,14 +162,15 @@ export function OrdersManager() {
       title: `Override Payment: Order #${orderNumber}`,
       message: "Are you sure you want to do this?",
       description: `Manually set payment status to "${targetStatus}" with reason: "${reason}".`,
+      defaultCommitPreview: `Payment override to ${targetStatus}: ${reason}`,
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsOverriding(true);
         try {
           const res = await overrideOrderPaymentStatusAction(orderId, {
             paymentStatus: targetStatus,
             overrideReason: reason,
-          });
+          }, commitNote);
           if (res.success) {
             showToast(`✓ Payment status overridden to ${targetStatus} with audit log`);
             setOverrideOrder(null);

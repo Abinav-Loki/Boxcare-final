@@ -3,14 +3,22 @@
 import React from "react";
 import Link from "next/link";
 import { useCart } from "./cart-context";
-import { PRODUCTS, getUnitPrice } from "@/lib/products-data";
+import { getUnitPrice } from "@/lib/products-data";
 
 export function WishlistDrawer() {
-  const { wishlist, isWishlistOpen, setIsWishlistOpen, toggleWishlist, addToCart } = useCart();
+  const {
+    wishlistProducts,
+    wishlistCount,
+    isWishlistOpen,
+    setIsWishlistOpen,
+    toggleWishlist,
+    clearWishlist,
+    addToCart,
+  } = useCart();
 
   if (!isWishlistOpen) return null;
 
-  const wishedProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const wishedProducts = wishlistProducts;
 
   return (
     <div
@@ -71,32 +79,56 @@ export function WishlistDrawer() {
             </div>
             <div>
               <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#1F1A16", margin: 0 }}>
-                My Favorites ({wishlist.length})
+                My Favorites ({wishlistCount})
               </h2>
               <span style={{ fontSize: "12px", color: "#8C7E72" }}>Saved for your next packaging order</span>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="Close drawer"
-            onClick={() => setIsWishlistOpen(false)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#8C7E72",
-              cursor: "pointer",
-              padding: "6px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {wishedProducts.length > 0 && (
+              <button
+                type="button"
+                onClick={clearWishlist}
+                title="Clear all favorites"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#A89A8D",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#EF4444")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#A89A8D")}
+              >
+                Clear All
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Close drawer"
+              onClick={() => setIsWishlistOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#8C7E72",
+                cursor: "pointer",
+                padding: "6px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Drawer Body */}
@@ -158,6 +190,7 @@ export function WishlistDrawer() {
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {wishedProducts.map((prod) => {
                 const unitPrice = getUnitPrice(prod, 500);
+                const prodImg = prod.image || "/images/box_4_4_1_5.png";
                 return (
                   <div
                     key={prod.id}
@@ -189,7 +222,7 @@ export function WishlistDrawer() {
                       }}
                     >
                       <img
-                        src={prod.image}
+                        src={prodImg}
                         alt={prod.name}
                         style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                       />
@@ -238,7 +271,7 @@ export function WishlistDrawer() {
                       </div>
 
                       <span style={{ fontSize: "11px", color: "#8B5E3C", fontWeight: 600, marginTop: "4px" }}>
-                        Size: {prod.size_inches}
+                        Size: {prod.size_inches || `${prod.length_in}x${prod.width_in}x${prod.height_in} in`}
                       </span>
 
                       <div style={{ marginTop: "auto", paddingTop: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

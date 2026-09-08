@@ -71,8 +71,9 @@ export function PagesManager() {
       title: `${isActive ? "Publish" : "Draft"} Page: ${target.title}`,
       message: "Are you sure you want to do this?",
       description: `Change page status to "${newStatus}" in the database.`,
+      defaultCommitPreview: isActive ? "Page published" : "Page unpublished",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setPages((prev) =>
           prev.map((p) =>
             p.id === id
@@ -88,7 +89,7 @@ export function PagesManager() {
           title: target.title,
           content: target.title,
           isActive,
-        });
+        }, commitNote);
       },
     });
   };

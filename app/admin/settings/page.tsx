@@ -159,8 +159,9 @@ function AdminSettingsContent() {
       title: "Save Store Configuration",
       message: "Are you sure you want to update the store settings and logistics parameters?",
       description: "Changes affect shipping rates, tax calculations, and contact info in the database.",
+      defaultCommitPreview: "Setting updated",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSavingStore(true);
         const storePayload = {
           storeName: storeName.trim(),
@@ -187,7 +188,7 @@ function AdminSettingsContent() {
           currency: storePayload.currency,
           free_shipping_threshold: String(storePayload.freeShippingThreshold),
           default_tax_rate: String(storePayload.defaultTaxRate),
-        });
+        }, commitNote);
 
         setIsSavingStore(false);
         setStoreSuccessMsg("Store configuration and logistics rules updated in database!");

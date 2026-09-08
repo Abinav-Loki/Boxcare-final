@@ -165,12 +165,13 @@ export function CouponsManager() {
       title: editingCoupon ? `Update Coupon: ${coupon.code}` : `Create Coupon: ${coupon.code}`,
       message: "Are you sure you want to do this?",
       description: `Save promo discount details for "${coupon.code}" to the database.`,
+      defaultCommitPreview: editingCoupon ? "Coupon updated" : "Coupon created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         if (editingCoupon) {
           setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? coupon : c)));
           showToast(`✓ Coupon "${coupon.code}" updated successfully!`);
-          const res = await updateAdminCouponAction(coupon.id, payload);
+          const res = await updateAdminCouponAction(coupon.id, payload, commitNote);
           if (!res.success) {
             showToast(`⚠️ Sync notice: ${res.error}`);
             loadCoupons();
@@ -178,7 +179,7 @@ export function CouponsManager() {
         } else {
           setCoupons((prev) => [coupon, ...prev]);
           showToast(`🎉 Coupon "${coupon.code}" created successfully!`);
-          const res = await createAdminCouponAction(payload);
+          const res = await createAdminCouponAction(payload, commitNote);
           if (!res.success) {
             showToast(`⚠️ Sync notice: ${res.error}`);
             loadCoupons();
@@ -199,8 +200,9 @@ export function CouponsManager() {
       title: `${newActive ? "Activate" : "Deactivate"} Coupon: ${target.code}`,
       message: "Are you sure you want to do this?",
       description: `Change coupon "${target.code}" status to "${newStatus}" in the database.`,
+      defaultCommitPreview: newActive ? "Coupon activated" : "Coupon deactivated",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setCoupons((prev) =>
           prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
         );
@@ -210,7 +212,7 @@ export function CouponsManager() {
           setViewingCoupon((prev) => (prev ? { ...prev, status: newStatus } : null));
         }
 
-        const res = await toggleCouponActiveAction(id, newActive);
+        const res = await toggleCouponActiveAction(id, newActive, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadCoupons();
@@ -224,9 +226,10 @@ export function CouponsManager() {
       title: `Delete Coupon: ${target.code}`,
       message: "This action cannot be undone. Are you sure you want to delete this?",
       description: `Coupon "${target.code}" will be permanently removed from the database.`,
+      defaultCommitPreview: "Coupon deleted",
       confirmLabel: "Continue to Verify",
       isDelete: true,
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setCoupons((prev) => prev.filter((c) => c.id !== target.id));
         if (viewingCoupon && viewingCoupon.id === target.id) {
           setViewingCoupon(null);
@@ -234,7 +237,7 @@ export function CouponsManager() {
         setDeletingCoupon(null);
         showToast(`🗑️ Coupon "${target.code}" deleted.`);
 
-        const res = await deleteAdminCouponAction(target.id);
+        const res = await deleteAdminCouponAction(target.id, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadCoupons();

@@ -63,7 +63,7 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     setIsLoading(true);
     try {
       const res = await getAdminCategoriesAction();
-      if (res.success && res.data && res.data.length > 0) {
+      if (res.success && res.data) {
         setCategories(res.data as any);
       }
     } catch (err) {
@@ -94,28 +94,29 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     if (e) e.stopPropagation();
     confirmAction({
       title: `Delete Category: ${name}`,
-      message: "This action cannot be undone. Are you sure you want to delete this?",
+      message: "This action cannot be undone. Are you sure you want to delete this category?",
       description: `Category: ${name} (ID: ${id})`,
+      defaultCommitPreview: "Category deleted",
       isDestructive: true,
       confirmLabel: "Continue to Delete",
-      onConfirm: async () => {
-        setCategories((prev) => prev.filter((c) => c.id !== id));
-        if (selectedCategory && selectedCategory.id === id) {
+      onConfirm: async (commitNote?: string) => {
+        setCategories((prev) => prev.filter((c) => c.id !== id && c.slug !== id));
+        if (selectedCategory && (selectedCategory.id === id || selectedCategory.slug === id)) {
           setSelectedCategory(null);
         }
         setIsModalOpen(false);
 
-        const res = await deleteAdminCategoryAction(id);
+        const res = await deleteAdminCategoryAction(id, commitNote);
         if (res.success) {
           if ((res as any).softDeleted) {
-            showToast(`🛡️ Category "${name}" contains products, so it was safely deactivated.`);
+            showToast(`🛡️ Category "${name}" contains historical orders, so it was safely deactivated.`);
           } else {
             showToast(`🗑️ Category "${name}" was permanently removed.`);
           }
-          loadCategories();
+          await loadCategories();
         } else {
           showToast(`⚠️ ${(res as any).error || "Failed to delete category"}`);
-          loadCategories();
+          await loadCategories();
         }
       },
     });
@@ -131,8 +132,9 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
       title: "Toggle Category Status",
       message: "Are you sure you want to do this?",
       description: `Change "${cat.name}" status to ${newActive ? "Active (Visible)" : "Inactive (Hidden)"}.`,
+      defaultCommitPreview: newActive ? "Category activated" : "Category deactivated",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setCategories((prev) =>
           prev.map((c) =>
             c.id === id
@@ -145,10 +147,10 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
           )
         );
 
-        const res = await toggleCategoryActiveAction(id, newActive);
+        const res = await toggleCategoryActiveAction(id, newActive, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
-          loadCategories();
+          await loadCategories();
         } else {
           showToast(`Category "${cat.name}" is now ${newActive ? "Active" : "Inactive"}`);
         }
@@ -232,16 +234,21 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
 
   const handleSaveCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      showToast("⚠️ Category name is required");
+      return;
+    }
 
-    const generatedSlug = formData.slug.trim() ||
-      formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+    const generatedSlug = (formData.slug.trim() || formData.name.trim())
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
 
     const payload = {
       name: formData.name.trim(),
       slug: generatedSlug,
-      imageUrl: formData.image,
-      description: formData.description.trim(),
+      imageUrl: formData.image || undefined,
+      description: formData.description.trim() || undefined,
       sortOrder: Number(formData.sortOrder) || 1,
       isActive: formData.status === "ACTIVE",
       isFeatured: Boolean(formData.featured),
@@ -252,23 +259,30 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
       title: editingCategory ? `Update Category: ${formData.name}` : `Create Category: ${formData.name}`,
       message: "Are you sure you want to do this?",
       description: `Commit ${editingCategory ? "updates" : "new category creation"} for "${formData.name}" to the database.`,
+      defaultCommitPreview: editingCategory ? "Category updated" : "Category created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
           if (editingCategory) {
-            const res = await updateAdminCategoryAction(editingCategory.id, payload);
+            const res = await updateAdminCategoryAction(editingCategory.id, payload, commitNote);
             if (res.success && res.data) {
-              showToast(`✓ Updated category "${formData.name}" in database`);
-              loadCategories();
+              setCategories((prev) =>
+                prev.map((c) => (c.id === editingCategory.id ? (res.data as any) : c))
+              );
+              showToast(`✓ Category "${formData.name}" updated successfully!`);
+              await loadCategories();
+              setIsModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to update category"}`);
             }
           } else {
-            const res = await createAdminCategoryAction(payload);
+            const res = await createAdminCategoryAction(payload, commitNote);
             if (res.success && res.data) {
-              showToast(`🎉 Created category "${formData.name}" in database`);
-              loadCategories();
+              setCategories((prev) => [res.data as any, ...prev.filter((c) => c.id !== (res.data as any).id)]);
+              showToast(`🎉 Category "${formData.name}" created and added to storefront!`);
+              await loadCategories();
+              setIsModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to create category"}`);
             }
@@ -277,7 +291,6 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
           showToast(`⚠️ Error: ${err.message || "Failed to save category"}`);
         } finally {
           setIsSubmitting(false);
-          setIsModalOpen(false);
         }
       },
     });
@@ -292,8 +305,65 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     );
   };
 
+  if (selectedCategory) {
+    return (
+      <div style={{ position: "relative" }}>
+        <CategoryProductsView
+          category={selectedCategory}
+          onBack={() => {
+            setSelectedCategory(null);
+            loadCategories();
+          }}
+          onDeleteCategory={(id, name) => handleDeleteCategory(id, name)}
+        />
+        {ConfirmDialog}
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px", position: "relative" }}>
+      {/* Toast Pop-Up Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "24px",
+            right: "28px",
+            zIndex: 99999,
+            background: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#FEF2F2" : "#ECFDF5",
+            border: `1.5px solid ${toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#F87171" : "#34D399"}`,
+            color: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#991B1B" : "#065F46",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            fontSize: "13px",
+            fontWeight: 700,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.18)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            animation: "adminModalPop 0.2s ease-out",
+          }}
+        >
+          <span>{toastMessage.includes("⚠️") ? "⚠️" : "✓"}</span>
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginLeft: "6px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 1. Header & Quick Summary */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
         <div>
@@ -1078,7 +1148,10 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
                 {editingCategory && (
                   <button
                     type="button"
-                    onClick={() => handleDeleteCategory(editingCategory.id, editingCategory.name)}
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      handleDeleteCategory(editingCategory.id, editingCategory.name);
+                    }}
                     style={{
                       padding: "8px 14px",
                       background: "#FEE2E2",

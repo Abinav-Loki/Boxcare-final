@@ -15,18 +15,26 @@ export const productVariantSchema = z.object({
 });
 
 export const productSchema = z.object({
-  name: z.string().trim().min(2),
+  name: z.string().trim().min(1, "Product name is required"),
   slug: z
     .string()
-    .trim()
-    .min(2)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    .optional()
+    .nullable()
+    .transform((val) => {
+      if (!val) return "";
+      return val
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }),
   categoryId: z.string().trim().min(1),
-  description: z.string().trim().optional(),
+  description: z.string().trim().optional().nullable(),
   status: productStatusSchema.default("DRAFT"),
-  seoTitle: z.string().trim().optional(),
-  seoDescription: z.string().trim().optional(),
+  seoTitle: z.string().trim().optional().nullable(),
+  seoDescription: z.string().trim().optional().nullable(),
   variants: z.array(productVariantSchema).min(1),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;
+

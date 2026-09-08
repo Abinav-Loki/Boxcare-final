@@ -124,12 +124,13 @@ export function NavigationManager() {
       title: editingItem ? `Update Menu Item: ${savedItem.title}` : `Add Menu Item: ${savedItem.title}`,
       message: "Are you sure you want to do this?",
       description: `Commit navigation link "${savedItem.title}" to the database.`,
+      defaultCommitPreview: editingItem ? "Navigation item updated" : "Navigation item created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         if (editingItem) {
           setItems((prev) => prev.map((item) => (item.id === savedItem.id ? savedItem : item)));
           showToast(`✓ Updated navigation item "${savedItem.title}"`);
-          const res = await updateAdminNavigationItemAction(savedItem.id, payload);
+          const res = await updateAdminNavigationItemAction(savedItem.id, payload, commitNote);
           if (!res.success) {
             showToast(`⚠️ Sync notice: ${res.error}`);
             loadNavigation();
@@ -137,7 +138,7 @@ export function NavigationManager() {
         } else {
           setItems((prev) => [...prev, savedItem]);
           showToast(`🎉 Added new menu item "${savedItem.title}"`);
-          const res = await createAdminNavigationItemAction(payload);
+          const res = await createAdminNavigationItemAction(payload, commitNote);
           if (!res.success) {
             showToast(`⚠️ Sync notice: ${res.error}`);
             loadNavigation();
@@ -159,14 +160,15 @@ export function NavigationManager() {
       title: `${newStatus ? "Show" : "Hide"} Menu Item: ${target.title}`,
       message: "Are you sure you want to do this?",
       description: `Change navigation visibility to ${newStatus ? "Visible" : "Hidden"}.`,
+      defaultCommitPreview: newStatus ? "Navigation item updated" : "Navigation item updated",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setItems((prev) =>
           prev.map((item) => (item.id === id ? { ...item, isActive: newStatus } : item))
         );
         showToast(`"${target.title}" is now ${newStatus ? "Visible on Storefront 👁️" : "Hidden 🙈"}`);
 
-        const res = await updateAdminNavigationItemAction(id, { isActive: newStatus });
+        const res = await updateAdminNavigationItemAction(id, { isActive: newStatus }, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadNavigation();
@@ -192,8 +194,9 @@ export function NavigationManager() {
       title: `Reorder Menu Item: ${itemToMove.title}`,
       message: "Are you sure you want to do this?",
       description: `Move "${itemToMove.title}" up in navigation ordering.`,
+      defaultCommitPreview: "Navigation item reordered",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         const newItems = items.map((item) => {
           if (item.id === itemToMove.id) return { ...item, sortOrder: prevSibling.sortOrder };
           if (item.id === prevSibling.id) return { ...item, sortOrder: itemToMove.sortOrder };
@@ -206,7 +209,7 @@ export function NavigationManager() {
         await reorderAdminNavigationAction([
           { id: itemToMove.id, sortOrder: prevSibling.sortOrder },
           { id: prevSibling.id, sortOrder: itemToMove.sortOrder },
-        ]);
+        ], commitNote);
       },
     });
   };
@@ -228,8 +231,9 @@ export function NavigationManager() {
       title: `Reorder Menu Item: ${itemToMove.title}`,
       message: "Are you sure you want to do this?",
       description: `Move "${itemToMove.title}" down in navigation ordering.`,
+      defaultCommitPreview: "Navigation item reordered",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         const newItems = items.map((item) => {
           if (item.id === itemToMove.id) return { ...item, sortOrder: nextSibling.sortOrder };
           if (item.id === nextSibling.id) return { ...item, sortOrder: itemToMove.sortOrder };
@@ -242,7 +246,7 @@ export function NavigationManager() {
         await reorderAdminNavigationAction([
           { id: itemToMove.id, sortOrder: nextSibling.sortOrder },
           { id: nextSibling.id, sortOrder: itemToMove.sortOrder },
-        ]);
+        ], commitNote);
       },
     });
   };
@@ -252,14 +256,15 @@ export function NavigationManager() {
       title: `Delete Menu Item: ${target.title}`,
       message: "This action cannot be undone. Are you sure you want to delete this?",
       description: `Navigation item "${target.title}" and its children will be permanently removed.`,
+      defaultCommitPreview: "Navigation item deleted",
       confirmLabel: "Continue to Verify",
       isDelete: true,
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setItems((prev) => prev.filter((item) => item.id !== target.id && item.parentId !== target.id));
         setDeletingItem(null);
         showToast(`🗑️ Deleted "${target.title}"`);
 
-        const res = await deleteAdminNavigationItemAction(target.id);
+        const res = await deleteAdminNavigationItemAction(target.id, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadNavigation();

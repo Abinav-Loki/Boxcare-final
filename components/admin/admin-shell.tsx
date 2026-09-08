@@ -21,6 +21,7 @@ const navGroups: NavGroup[] = [
     title: "Overview",
     items: [
       { href: "/admin/dashboard", label: "Dashboard" },
+      { href: "/admin/activity", label: "Activity History" },
     ],
   },
   {

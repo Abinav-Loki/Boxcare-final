@@ -157,7 +157,11 @@ export async function getDbProducts(options?: {
     where.categoryId = options.categoryId;
   }
   if (options?.categorySlug) {
-    where.category = { slug: options.categorySlug };
+    where.OR = [
+      { category: { slug: options.categorySlug } },
+      { category: { id: options.categorySlug } },
+      { categoryId: options.categorySlug },
+    ];
   }
   if (options?.search?.trim()) {
     const q = options.search.trim();

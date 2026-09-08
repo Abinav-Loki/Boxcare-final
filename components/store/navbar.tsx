@@ -10,7 +10,17 @@ import { PRODUCTS, Product } from "@/lib/products-data";
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { cartCount, setIsCartOpen, wishlist, isWishlistOpen, setIsWishlistOpen, toggleWishlist, isInWishlist, addToCart } = useCart();
+  const {
+    cartCount,
+    setIsCartOpen,
+    wishlistCount,
+    isWishlistOpen,
+    setIsWishlistOpen,
+    toggleWishlist,
+    isInWishlist,
+    addToCart,
+    allProducts,
+  } = useCart();
   const { user, isLoggedIn, signOut } = useCustomerAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -130,20 +140,21 @@ export function Navbar() {
     const q = searchQuery.toLowerCase().trim();
     const qNoSpaces = q.replace(/\s+/g, "");
 
-    const matches = PRODUCTS.filter((p) => {
-      const nameMatch = p.name.toLowerCase().includes(q);
-      const catMatch = p.category.toLowerCase().includes(q);
-      const catSlugMatch = p.categorySlug.toLowerCase().includes(q);
-      const sizeMatch = p.size_inches.toLowerCase().includes(q);
-      const sizeShortMatch = p.size_inches_short.toLowerCase().includes(q);
-      const dimMatch = `${p.length_in}x${p.width_in}x${p.height_in}`.toLowerCase().includes(qNoSpaces);
-      const descMatch = p.description.toLowerCase().includes(q);
+    const sourceProducts = allProducts && allProducts.length > 0 ? allProducts : PRODUCTS;
+    const matches = sourceProducts.filter((p) => {
+      const nameMatch = (p.name || "").toLowerCase().includes(q);
+      const catMatch = (p.category || "").toLowerCase().includes(q);
+      const catSlugMatch = (p.categorySlug || "").toLowerCase().includes(q);
+      const sizeMatch = (p.size_inches || "").toLowerCase().includes(q);
+      const sizeShortMatch = (p.size_inches_short || "").toLowerCase().includes(q);
+      const dimMatch = `${p.length_in || ""}x${p.width_in || ""}x${p.height_in || ""}`.toLowerCase().includes(qNoSpaces);
+      const descMatch = (p.description || "").toLowerCase().includes(q);
 
       return nameMatch || catMatch || catSlugMatch || sizeMatch || sizeShortMatch || dimMatch || descMatch;
     }).slice(0, 8);
 
     setSearchResults(matches);
-  }, [searchQuery]);
+  }, [searchQuery, allProducts]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,10 +346,10 @@ export function Navbar() {
             id="wishlist-toggle-btn"
             onClick={() => setIsWishlistOpen(true)}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={wishlist.length > 0 ? "#EF4444" : "none"} stroke={wishlist.length > 0 ? "#EF4444" : "currentColor"} strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={wishlistCount > 0 ? "#EF4444" : "none"} stroke={wishlistCount > 0 ? "#EF4444" : "currentColor"} strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
-            {wishlist.length > 0 && <span className="badge">{wishlist.length}</span>}
+            {wishlistCount > 0 && <span className="badge">{wishlistCount}</span>}
           </button>
 
           {/* User Account Button & Dropdown */}
@@ -970,6 +981,38 @@ export function Navbar() {
             <Link href="/category/mailer-boxes" onClick={() => setIsMobileMenuOpen(false)} style={{ paddingLeft: "16px", fontSize: "0.9rem" }}>Mailer Boxes</Link>
             <Link href="/category/corrugated-boxes" onClick={() => setIsMobileMenuOpen(false)} style={{ paddingLeft: "16px", fontSize: "0.9rem" }}>Corrugated Boxes</Link>
             <Link href="/accessories" onClick={() => setIsMobileMenuOpen(false)} style={{ paddingLeft: "16px", fontSize: "0.9rem" }}>Accessories & Tapes</Link>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsWishlistOpen(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 0",
+                background: "none",
+                border: "none",
+                fontWeight: 600,
+                color: "#2B2B2B",
+                cursor: "pointer",
+                textAlign: "left",
+                fontSize: "1rem",
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={wishlistCount > 0 ? "#EF4444" : "none"} stroke={wishlistCount > 0 ? "#EF4444" : "#5C3A22"} strokeWidth="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                My Favorites
+              </span>
+              {wishlistCount > 0 && (
+                <span style={{ backgroundColor: "#EF4444", color: "#FFF", fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: "10px" }}>
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
             <Link href="/custom-boxes" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 700, color: "#8B5E3C", padding: "8px 0" }}>Custom Boxes</Link>
             <Link href="/bulk-orders" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>Bulk Wholesale</Link>
             <Link href="/industries" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>Industries</Link>

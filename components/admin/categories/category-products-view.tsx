@@ -12,6 +12,7 @@ import {
   deleteAdminProductAction,
   toggleProductStatusAction,
 } from "@/app/actions/admin-products";
+import { deleteAdminCategoryAction } from "@/app/actions/admin-categories";
 
 import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
 
@@ -316,23 +317,30 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
       title: editingProduct ? `Update Product: ${productForm.name}` : `Add Product to ${category.name}`,
       message: "Are you sure you want to do this?",
       description: `Commit SKU details for "${productForm.name}" to the database.`,
+      defaultCommitPreview: editingProduct ? "Product updated" : "Product created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
           if (editingProduct) {
-            const res = await updateAdminProductAction(editingProduct.id, payload);
+            const res = await updateAdminProductAction(editingProduct.id, payload, commitNote);
             if (res.success && res.data) {
-              showToast(`✓ Updated product "${productForm.name}" in database`);
-              loadProducts();
+              setProductsList((prev) =>
+                prev.map((p) => (p.id === editingProduct.id ? (res.data as any) : p))
+              );
+              showToast(`✓ Product "${productForm.name}" updated successfully!`);
+              await loadProducts();
+              setIsProductModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to update product"}`);
             }
           } else {
-            const res = await createAdminProductAction(payload);
+            const res = await createAdminProductAction(payload, commitNote);
             if (res.success && res.data) {
-              showToast(`🎉 Created product "${productForm.name}" in database`);
-              loadProducts();
+              setProductsList((prev) => [res.data as any, ...prev.filter((p) => p.id !== (res.data as any).id)]);
+              showToast(`🎉 Product SKU "${productForm.name}" added to ${category.name}!`);
+              await loadProducts();
+              setIsProductModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to create product"}`);
             }
@@ -341,7 +349,6 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
           showToast(`⚠️ Error: ${err.message || "Failed to save product"}`);
         } finally {
           setIsSubmitting(false);
-          setIsProductModalOpen(false);
         }
       },
     });
@@ -352,30 +359,95 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
       title: `Delete Product: ${name}`,
       message: "This action cannot be undone. Are you sure you want to delete this?",
       description: `Product SKU: ${name} (ID: ${id})`,
+      defaultCommitPreview: "Product deleted",
       isDestructive: true,
       confirmLabel: "Continue to Delete",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setProductsList((prev) => prev.filter((p) => p.id !== id));
         showToast(`🗑️ Deleting "${name}"...`);
 
-        const res = await deleteAdminProductAction(id);
+        const res = await deleteAdminProductAction(id, commitNote);
         if (res.success) {
           if ((res as any).softDeleted) {
             showToast(`🛡️ "${name}" was safely deactivated (has order history).`);
           } else {
             showToast(`🗑️ "${name}" permanently removed.`);
           }
-          loadProducts();
+          await loadProducts();
         } else {
           showToast(`⚠️ ${(res as any).error || "Failed to delete product"}`);
-          loadProducts();
+          await loadProducts();
+        }
+      },
+    });
+  };
+
+  const handleDeleteThisCategory = () => {
+    confirmAction({
+      title: `Delete Category: ${category.name}`,
+      message: "This action cannot be undone. Are you sure you want to delete this category?",
+      description: `Category: ${category.name} (ID: ${category.id})`,
+      defaultCommitPreview: "Category deleted",
+      isDestructive: true,
+      confirmLabel: "Continue to Delete",
+      onConfirm: async (commitNote?: string) => {
+        showToast(`🗑️ Deleting category "${category.name}"...`);
+        const res = await deleteAdminCategoryAction(category.id, commitNote);
+        if (res.success) {
+          if (onDeleteCategory) {
+            onDeleteCategory(category.id, category.name);
+          }
+          onBack();
+        } else {
+          showToast(`⚠️ ${(res as any).error || "Failed to delete category"}`);
         }
       },
     });
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px", position: "relative" }}>
+      {/* Toast Pop-Up Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "24px",
+            right: "28px",
+            zIndex: 99999,
+            background: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#FEF2F2" : "#ECFDF5",
+            border: `1.5px solid ${toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#F87171" : "#34D399"}`,
+            color: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#991B1B" : "#065F46",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            fontSize: "13px",
+            fontWeight: 700,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.18)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            animation: "adminModalPop 0.2s ease-out",
+          }}
+        >
+          <span>{toastMessage.includes("⚠️") ? "⚠️" : "✓"}</span>
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginLeft: "6px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 1. Breadcrumbs & Header */}
       <div>
         <button
@@ -505,24 +577,22 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
               <span>+</span>
               <span>Add Product</span>
             </button>
-            {onDeleteCategory && (
-              <button
-                onClick={() => onDeleteCategory(category.id, category.name)}
-                style={{
-                  padding: "8px 12px",
-                  background: "#FEE2E2",
-                  border: "1px solid #FECACA",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "#DC2626",
-                  cursor: "pointer",
-                }}
-                title="Delete this entire category"
-              >
-                Delete Category
-              </button>
-            )}
+            <button
+              onClick={handleDeleteThisCategory}
+              style={{
+                padding: "8px 12px",
+                background: "#FEE2E2",
+                border: "1px solid #FECACA",
+                borderRadius: "10px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#DC2626",
+                cursor: "pointer",
+              }}
+              title="Delete this entire category"
+            >
+              Delete Category
+            </button>
           </div>
         </div>
       </div>

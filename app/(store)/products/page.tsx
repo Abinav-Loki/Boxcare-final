@@ -2,13 +2,15 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { PRODUCTS, Product } from "@/lib/products-data";
+import { PRODUCTS, Product, CATEGORIES } from "@/lib/products-data";
 import { useCart } from "@/components/store/cart-context";
 import { getAdminProductsAction } from "@/app/actions/admin-products";
+import { getAdminCategoriesAction } from "@/app/actions/admin-categories";
 
 export default function ProductsPage() {
   const { addToCart, setIsCartOpen, toggleWishlist, isInWishlist } = useCart();
   const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
+  const [categoriesList, setCategoriesList] = useState<any[]>(CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLengths, setSelectedLengths] = useState<number[]>([]);
@@ -19,12 +21,23 @@ export default function ProductsPage() {
   useEffect(() => {
     async function loadDb() {
       try {
-        const res = await getAdminProductsAction();
-        if (res.success && res.data && res.data.length > 0) {
-          setProductsList(res.data as any);
+        const [pRes, cRes] = await Promise.all([
+          getAdminProductsAction(),
+          getAdminCategoriesAction(),
+        ]);
+        if (pRes.success && pRes.data && pRes.data.length > 0) {
+          setProductsList(pRes.data as any);
+        }
+        if (cRes.success && cRes.data && cRes.data.length > 0) {
+          const activeCategories = cRes.data.filter(
+            (c: any) => c.isActive !== false && c.status !== "INACTIVE"
+          );
+          if (activeCategories.length > 0) {
+            setCategoriesList(activeCategories);
+          }
         }
       } catch (err) {
-        console.error("Failed to load products:", err);
+        console.error("Failed to load products/categories:", err);
       }
     }
     loadDb();
@@ -60,8 +73,14 @@ export default function ProductsPage() {
         return false;
       }
       // Category filter
-      if (selectedCategory !== "all" && product.categorySlug !== selectedCategory) {
-        return false;
+      if (selectedCategory !== "all") {
+        const catSlug = (product.categorySlug || "").toLowerCase();
+        const catId = (product.categoryId || "").toLowerCase();
+        const catName = (product.category || "").toLowerCase();
+        const sel = selectedCategory.toLowerCase();
+        if (catSlug !== sel && catId !== sel && catName !== sel && !catName.includes(sel.replace(/-/g, " "))) {
+          return false;
+        }
       }
 
       // Search filter
@@ -140,137 +159,21 @@ export default function ProductsPage() {
             </p>
           </div>
           <div className="category-grid">
-            {/* 1. Mailer Boxes */}
-            <Link href="/category/mailer-boxes" className="cat-card reveal-up visible" id="cat-mailer">
-              <div className="cat-img-box">
-                <img src="/images/mailer-boxes.png" alt="Mailer Boxes" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Mailer Boxes</h3>
-                <p className="cat-desc">Sturdy and secure boxes perfect for e-commerce deliveries.</p>
-              </div>
-            </Link>
-
-            {/* 2. Corrugated Boxes */}
-            <Link href="/category/corrugated-boxes" className="cat-card reveal-up visible" id="cat-corrugated">
-              <div className="cat-img-box">
-                <img src="/images/corrugated-boxes.png" alt="Corrugated Boxes" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Corrugated Boxes</h3>
-                <p className="cat-desc">Strong and durable corrugated boxes for safe packaging and shipping.</p>
-              </div>
-            </Link>
-
-            {/* 3. Shipping Boxes */}
-            <Link href="/category/shipping-boxes" className="cat-card reveal-up visible" id="cat-shipping">
-              <div className="cat-img-box">
-                <img src="/images/shipping-boxes.png" alt="Shipping Boxes" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Shipping Boxes</h3>
-                <p className="cat-desc">Reliable shipping boxes designed to protect your products.</p>
-              </div>
-            </Link>
-
-            {/* 4. Pizza Boxes */}
-            <Link href="/category/pizza-boxes" className="cat-card reveal-up visible" id="cat-pizza">
-              <div className="cat-img-box">
-                <img src="/images/pizza-boxes.png" alt="Pizza Boxes" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Pizza Boxes</h3>
-                <p className="cat-desc">Heat-resistant pizza boxes that keep your pizza fresh and hot.</p>
-              </div>
-            </Link>
-
-            {/* 5. Mono Cartons */}
-            <Link href="/category/mono-cartons" className="cat-card reveal-up visible" id="cat-mono">
-              <div className="cat-img-box">
-                <img src="/images/mono-cartons.png" alt="Mono Cartons" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Mono Cartons</h3>
-                <p className="cat-desc">Premium mono cartons for cosmetics, food, and retail packaging.</p>
-              </div>
-            </Link>
-
-            {/* 6. Courier Bags */}
-            <Link href="/category/courier-bags" className="cat-card reveal-up visible" id="cat-courier">
-              <div className="cat-img-box">
-                <img src="/images/courier-bags.png" alt="Courier Bags" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Courier Bags</h3>
-                <p className="cat-desc">Lightweight and tamper-proof courier bags for secure deliveries.</p>
-              </div>
-            </Link>
-
-            {/* 7. Paper Bags */}
-            <Link href="/category/paper-bags" className="cat-card reveal-up visible" id="cat-paperbag">
-              <div className="cat-img-box">
-                <img src="/images/paper-bags.png" alt="Paper Bags" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Paper Bags</h3>
-                <p className="cat-desc">Eco-friendly paper bags for shopping, retail, and promotional use.</p>
-              </div>
-            </Link>
-
-            {/* 8. Tape Rolls */}
-            <Link href="/accessories" className="cat-card reveal-up visible" id="cat-tape">
-              <div className="cat-img-box">
-                <img src="/images/tape-rolls.png" alt="Tape Rolls" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Tape Rolls</h3>
-                <p className="cat-desc">High-quality adhesive tape rolls for secure sealing and packaging.</p>
-              </div>
-            </Link>
-
-            {/* 9. Bubble Wrap */}
-            <Link href="/accessories" className="cat-card reveal-up visible" id="cat-bubble">
-              <div className="cat-img-box">
-                <img src="/images/bubble-wrap.png" alt="Bubble Wrap" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Bubble Wrap</h3>
-                <p className="cat-desc">Protective bubble wrap for cushioning and safeguarding your items.</p>
-              </div>
-            </Link>
-
-            {/* 10. Corrugated Rolls */}
-            <Link href="/accessories" className="cat-card reveal-up visible" id="cat-corrroll">
-              <div className="cat-img-box">
-                <img src="/images/corrugated-rolls.png" alt="Corrugated Rolls" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Corrugated Rolls</h3>
-                <p className="cat-desc">Durable corrugated rolls for wrapping, cushioning, and packaging.</p>
-              </div>
-            </Link>
-
-            {/* 11. Corrugated Sheets */}
-            <Link href="/accessories" className="cat-card reveal-up visible" id="cat-sheets">
-              <div className="cat-img-box">
-                <img src="/images/corrugated-sheets.png" alt="Corrugated Sheets" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Corrugated Sheets</h3>
-                <p className="cat-desc">High-strength corrugated sheets for packaging and industrial use.</p>
-              </div>
-            </Link>
-
-            {/* 12. Custom Printed Boxes */}
-            <Link href="/custom-boxes" className="cat-card reveal-up visible" id="cat-printed">
-              <div className="cat-img-box">
-                <img src="/images/custom-printed-boxes.png" alt="Custom Printed Boxes" loading="lazy" />
-              </div>
-              <div className="cat-info">
-                <h3 className="cat-name">Custom Printed Boxes</h3>
-                <p className="cat-desc">Custom printed boxes to elevate your brand and leave a lasting impression.</p>
-              </div>
-            </Link>
+            {categoriesList.map((cat) => {
+              const catImage = cat.imageUrl || cat.image || "/images/mailer-boxes.png";
+              const targetUrl = cat.slug.startsWith("/") ? cat.slug : `/category/${cat.slug}`;
+              return (
+                <Link key={cat.id || cat.slug} href={targetUrl} className="cat-card reveal-up visible" id={`cat-${cat.slug}`}>
+                  <div className="cat-img-box">
+                    <img src={catImage} alt={cat.name} loading="lazy" />
+                  </div>
+                  <div className="cat-info">
+                    <h3 className="cat-name">{cat.name}</h3>
+                    <p className="cat-desc">{cat.description || `High quality ${cat.name} solutions.`}</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -330,18 +233,11 @@ export default function ProductsPage() {
                     }}
                   >
                     <option value="all">All Product Types</option>
-                    <option value="mailer-boxes">Flap Mailer Box</option>
-                    <option value="shipping-boxes">Corrugated Box</option>
-                    <option value="custom-printed-boxes">Custom Printed Box</option>
-                    <option value="mono-cartons">Mono Folding Carton</option>
-                    <option value="corrugated-boxes">Corrugated Cartons</option>
-                    <option value="pizza-boxes">Pizza Box</option>
-                    <option value="courier-bags">Courier Bags</option>
-                    <option value="paper-bags">Paper Bags</option>
-                    <option value="tape-rolls">Tape Rolls</option>
-                    <option value="bubble-wrap">Bubble Wrap</option>
-                    <option value="corrugated-rolls">Corrugated Paper Roll</option>
-                    <option value="corrugated-sheets">Corrugated Sheets</option>
+                    {categoriesList.map((cat) => (
+                      <option key={cat.id || cat.slug} value={cat.slug}>
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

@@ -16,6 +16,7 @@ export default function CategoryPage() {
   const { addToCart, setIsCartOpen, toggleWishlist, isInWishlist } = useCart();
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
   const [dbCategory, setDbCategory] = useState<any>(null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadCategoryData() {
@@ -24,7 +25,7 @@ export default function CategoryPage() {
           getAdminProductsAction({ categorySlug: slug }),
           getAdminCategoriesAction(),
         ]);
-        if (pRes.success && pRes.data && pRes.data.length > 0) {
+        if (pRes.success && pRes.data) {
           setDbProducts(pRes.data as any);
         }
         if (cRes.success && cRes.data) {
@@ -33,6 +34,8 @@ export default function CategoryPage() {
         }
       } catch (err) {
         console.error("Failed to load category products:", err);
+      } finally {
+        setIsLoaded(true);
       }
     }
     loadCategoryData();
@@ -48,9 +51,15 @@ export default function CategoryPage() {
 
   const categoryProducts = useMemo(() => {
     if (dbProducts.length > 0) return dbProducts;
-    const prods = getProductsByCategory(slug);
-    return prods.length > 0 ? prods : PRODUCTS;
-  }, [dbProducts, slug]);
+    if (isLoaded) {
+      if (dbCategory) {
+        // If this category is registered in DB and has no products, it should be empty
+        return [];
+      }
+      return getProductsByCategory(slug);
+    }
+    return getProductsByCategory(slug);
+  }, [dbProducts, dbCategory, isLoaded, slug]);
 
   // Filter States
   const [inStock, setInStock] = useState<boolean>(true);
@@ -609,104 +618,160 @@ export default function CategoryPage() {
 
               {/* Dynamic Product Grid */}
               <div className={`catalog-products-grid grid-${gridCols}`} id="catalog-products-grid">
-                {filteredProducts.map((product) => {
-                  const minUnitPrice = (product.prices["500"] / 500).toFixed(2);
-                  const isWished = isInWishlist(product.id);
-                  return (
-                    <Link
-                      key={product.id}
-                      href={`/product/${product.slug}`}
-                      className="catalog-prod-card"
-                      id={`card-${product.id}`}
-                      style={{ position: "relative" }}
+                {filteredProducts.length === 0 ? (
+                  <div
+                    style={{
+                      gridColumn: "1 / -1",
+                      textAlign: "center",
+                      padding: "60px 20px",
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: "14px",
+                      border: "1px solid #EDE3D4",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "64px",
+                        height: "64px",
+                        borderRadius: "50%",
+                        backgroundColor: "#FAF7F2",
+                        border: "1.5px solid #E5D9C8",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 16px",
+                        color: "#8B5E3C",
+                      }}
                     >
-                      {product.availability === "Out of Stock" ? (
-                        <span className="discount-badge" style={{ background: "#78736E", color: "#FFFFFF" }}>OUT OF STOCK</span>
-                      ) : (
-                        <span className="discount-badge">{product.isPopular ? "BEST SELLER" : "-10%"}</span>
-                      )}
-
-                      {/* Favorites Heart Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleWishlist(product.id);
-                        }}
-                        aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
-                        title={isWished ? "Remove from favorites" : "Add to favorites"}
-                        style={{
-                          position: "absolute",
-                          top: "10px",
-                          right: "10px",
-                          zIndex: 10,
-                          background: isWished ? "#FEF2F2" : "#FFFFFF",
-                          border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
-                          borderRadius: "50%",
-                          width: "34px",
-                          height: "34px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                          cursor: "pointer",
-                          transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                          transform: isWished ? "scale(1.05)" : "scale(1)",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "scale(1.15)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
-                        }}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill={isWished ? "#EF4444" : "none"}
-                          stroke={isWished ? "#EF4444" : "#7A6E65"}
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                      </button>
-
-                      <div className="img-container">
-                        <img src={product.image} alt={product.name} className="catalog-prod-img" loading="lazy" />
-                      </div>
-
-                      <div className="info-container">
-                        <div className="rating">
-                          {[...Array(5)].map((_, i) => (
-                            <svg key={i} viewBox="0 0 24 24" style={{ width: "13px", height: "13px", fill: "#F59E0B", color: "#F59E0B" }}>
-                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                            </svg>
-                          ))}
-                          <span>({product.reviewsCount || 128})</span>
-                        </div>
-
-                        <h3 className="size-name">{product.name}</h3>
-
-                        <div className="price-starts">
-                          Starts From: <strong>₹{(product.prices["50"] / 50).toFixed(2)} - ₹{(product.prices["500"] / 500).toFixed(2)}</strong>
-                        </div>
-
-                        <button
-                          className="quick-add-btn"
-                          disabled={product.availability === "Out of Stock"}
-                          style={product.availability === "Out of Stock" ? { background: "var(--beige-xdk, #D8C9B4)", cursor: "not-allowed", boxShadow: "none" } : {}}
-                          onClick={(e) => handleQuickAdd(e, product)}
-                        >
-                          {product.availability === "Out of Stock" ? "Out Of Stock" : "Quick Add"}
-                        </button>
-                      </div>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                      </svg>
+                    </div>
+                    <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#2B2B2B", margin: "0 0 8px" }}>
+                      No products in {categoryInfo.name} yet
+                    </h3>
+                    <p style={{ fontSize: "0.92rem", color: "#78736E", margin: "0 0 24px", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+                      New packaging sizes and box options for this category will appear here once added in the admin panel.
+                    </p>
+                    <Link
+                      href="/products"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 24px",
+                        backgroundColor: "#5C3A22",
+                        color: "#FFFFFF",
+                        borderRadius: "8px",
+                        fontSize: "0.9rem",
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        boxShadow: "0 4px 12px rgba(92, 58, 34, 0.15)",
+                      }}
+                    >
+                      Browse All Products
                     </Link>
-                  );
-                })}
+                  </div>
+                ) : (
+                  filteredProducts.map((product) => {
+                    const minUnitPrice = (product.prices["500"] / 500).toFixed(2);
+                    const isWished = isInWishlist(product.id);
+                    return (
+                      <Link
+                        key={product.id}
+                        href={`/product/${product.slug}`}
+                        className="catalog-prod-card"
+                        id={`card-${product.id}`}
+                        style={{ position: "relative" }}
+                      >
+                        {product.availability === "Out of Stock" ? (
+                          <span className="discount-badge" style={{ background: "#78736E", color: "#FFFFFF" }}>OUT OF STOCK</span>
+                        ) : (
+                          <span className="discount-badge">{product.isPopular ? "BEST SELLER" : "-10%"}</span>
+                        )}
+
+                        {/* Favorites Heart Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleWishlist(product.id);
+                          }}
+                          aria-label={isWished ? "Remove from favorites" : "Add to favorites"}
+                          title={isWished ? "Remove from favorites" : "Add to favorites"}
+                          style={{
+                            position: "absolute",
+                            top: "10px",
+                            right: "10px",
+                            zIndex: 10,
+                            background: isWished ? "#FEF2F2" : "#FFFFFF",
+                            border: isWished ? "1.5px solid #FCA5A5" : "1.5px solid #EAE0D5",
+                            borderRadius: "50%",
+                            width: "34px",
+                            height: "34px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                            cursor: "pointer",
+                            transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                            transform: isWished ? "scale(1.05)" : "scale(1)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "scale(1.15)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = isWished ? "scale(1.05)" : "scale(1)";
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill={isWished ? "#EF4444" : "none"}
+                            stroke={isWished ? "#EF4444" : "#7A6E65"}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        </button>
+
+                        <div className="img-container">
+                          <img src={product.image} alt={product.name} className="catalog-prod-img" loading="lazy" />
+                        </div>
+
+                        <div className="info-container">
+                          <div className="rating">
+                            {[...Array(5)].map((_, i) => (
+                              <svg key={i} viewBox="0 0 24 24" style={{ width: "13px", height: "13px", fill: "#F59E0B", color: "#F59E0B" }}>
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            ))}
+                            <span>({product.reviewsCount || 128})</span>
+                          </div>
+
+                          <h3 className="size-name">{product.name}</h3>
+
+                          <div className="price-starts">
+                            Starts From: <strong>₹{(product.prices["50"] / 50).toFixed(2)} - ₹{(product.prices["500"] / 500).toFixed(2)}</strong>
+                          </div>
+
+                          <button
+                            className="quick-add-btn"
+                            disabled={product.availability === "Out of Stock"}
+                            style={product.availability === "Out of Stock" ? { background: "var(--beige-xdk, #D8C9B4)", cursor: "not-allowed", boxShadow: "none" } : {}}
+                            onClick={(e) => handleQuickAdd(e, product)}
+                          >
+                            {product.availability === "Out of Stock" ? "Out Of Stock" : "Quick Add"}
+                          </button>
+                        </div>
+                      </Link>
+                    );
+                  })
+                )}
               </div>
             </main>
           </div>

@@ -156,3 +156,8 @@ export type Review = Prisma.ReviewModel
  * 
  */
 export type Wishlist = Prisma.WishlistModel
+/**
+ * Model ActivityLog
+ * 
+ */
+export type ActivityLog = Prisma.ActivityLogModel

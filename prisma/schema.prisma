@@ -408,6 +408,30 @@ model Wishlist {
   @@index([userId])
 }
 
+model ActivityLog {
+  id                String   @id @default(uuid())
+  adminUserId       String?
+  adminEmail        String
+  action            String
+  module            String
+  entityType        String
+  entityId          String?
+  entityName        String?
+  commitNote        String
+  isCustomCommit    Boolean  @default(false)
+  beforeData        Json?
+  afterData         Json?
+  transactionStatus String   @default("COMMITTED")
+  createdAt         DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([module])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityId])
+  @@index([entityType, entityId])
+}
+
 enum Role {
   SUPER_ADMIN
   OPERATIONS

@@ -7,6 +7,7 @@ export interface AdminConfirmOptions {
   title?: string;
   message?: string;
   description?: string;
+  defaultCommitPreview?: string;
   isDestructive?: boolean;
   isDelete?: boolean;
   confirmLabel?: string;
@@ -27,7 +28,7 @@ export function useAdminConfirm() {
 
   const confirmAction = useCallback((opts: AdminConfirmOptions) => {
     setOptions(opts);
-    setCommitNote(opts.description || opts.message || "Commit changes to database.");
+    setCommitNote("");
     setStep("CONFIRM");
     setPassword("");
     setShowPassword(false);
@@ -70,7 +71,6 @@ export function useAdminConfirm() {
       if (!res.success) {
         setErrorMessage(res.error || "Incorrect password");
         setIsVerifying(false);
-        // Clear password on error
         setPassword("");
         passwordInputRef.current?.focus();
         return;
@@ -78,10 +78,12 @@ export function useAdminConfirm() {
 
       // Password verified successfully on server!
       const actionToExecute = options.onConfirm;
+      const noteToSend = commitNote.trim() || undefined;
       handleClose();
-      await actionToExecute();
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to verify password");
+      await actionToExecute(noteToSend);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to verify password";
+      setErrorMessage(errorMsg);
       setIsVerifying(false);
       setPassword("");
     }
@@ -89,8 +91,10 @@ export function useAdminConfirm() {
 
   const isDestructive = options?.isDestructive ?? false;
   const defaultConfirmMessage = isDestructive
-    ? "This action cannot be undone. Are you sure you want to delete this?"
+    ? "This action cannot be undone. Are you sure you want to proceed with this deletion?"
     : "Are you sure you want to do this?";
+
+  const resolvedDefaultPreview = options?.defaultCommitPreview || options?.title || "Admin change completed";
 
   const ConfirmDialog = isOpen && options ? (
     <div
@@ -115,7 +119,7 @@ export function useAdminConfirm() {
           border: "1px solid #EDE3D4",
           boxShadow: "0 24px 60px rgba(0,0,0,0.3), 0 4px 12px rgba(92,58,34,0.08)",
           width: "100%",
-          maxWidth: "440px",
+          maxWidth: "460px",
           overflow: "hidden",
           animation: "adminModalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
@@ -181,26 +185,30 @@ export function useAdminConfirm() {
               <p style={{ fontSize: "14px", color: "#2B2B2B", fontWeight: 600, margin: "0 0 8px 0", lineHeight: 1.5 }}>
                 {options.message || defaultConfirmMessage}
               </p>
-              {/* Typable Commit Note / Summary */}
-              <div style={{ marginTop: "14px" }}>
+
+              {/* Optional Commit Note in Step 1 */}
+              <div style={{ marginTop: "16px" }}>
                 <label
                   htmlFor="admin-commit-input"
                   style={{
-                    display: "block",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     fontSize: "12px",
                     fontWeight: 700,
                     color: "#5C3A22",
                     marginBottom: "6px",
                   }}
                 >
-                  Commit Note / Action Summary:
+                  <span>Commit Note / Change Summary</span>
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#8E8880" }}>Optional</span>
                 </label>
                 <textarea
                   id="admin-commit-input"
                   rows={2}
                   value={commitNote}
                   onChange={(e) => setCommitNote(e.target.value)}
-                  placeholder="Type commit summary or reason for change..."
+                  placeholder="Optional — leave empty to use the default"
                   style={{
                     width: "100%",
                     fontSize: "13px",
@@ -224,6 +232,9 @@ export function useAdminConfirm() {
                     e.currentTarget.style.backgroundColor = "#F7F2EC";
                   }}
                 />
+                <div style={{ marginTop: "5px", fontSize: "11px", color: "#8E8880" }}>
+                  Default: <span style={{ fontStyle: "italic", color: "#5C3A22", fontWeight: 600 }}>&ldquo;{resolvedDefaultPreview}&rdquo;</span>
+                </div>
               </div>
 
               {/* Action Buttons for Step 1 */}
@@ -266,55 +277,24 @@ export function useAdminConfirm() {
               </div>
             </div>
           ) : (
-            /* Step 2: Password Prompt & Optional Commit Note */
+            /* Step 2: Password Prompt & Commit Summary */
             <form onSubmit={handleVerifyAndExecute}>
-              {/* Optional Commit Note in Verification */}
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  htmlFor="admin-verify-commit-note"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    color: "#5C3A22",
-                    marginBottom: "6px",
-                  }}
-                >
-                  <span>Commit / Change Log Note:</span>
-                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#8E8880" }}>Optional</span>
-                </label>
-                <textarea
-                  id="admin-verify-commit-note"
-                  rows={2}
-                  value={commitNote}
-                  onChange={(e) => setCommitNote(e.target.value)}
-                  placeholder="Describe what was edited or changed (e.g. updated price, fixed typo, new banner)..."
-                  disabled={isVerifying}
-                  style={{
-                    width: "100%",
-                    fontSize: "12px",
-                    color: "#2B2B2B",
-                    background: "#F7F2EC",
-                    border: "1px solid #EDE3D4",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    boxSizing: "border-box",
-                    outline: "none",
-                    fontFamily: "inherit",
-                    resize: "vertical",
-                    transition: "border-color 0.2s, background-color 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#5C3A22";
-                    e.currentTarget.style.backgroundColor = "#FFFFFF";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#EDE3D4";
-                    e.currentTarget.style.backgroundColor = "#F7F2EC";
-                  }}
-                />
+              {/* Show selected commit note or default note */}
+              <div
+                style={{
+                  marginBottom: "16px",
+                  padding: "10px 12px",
+                  background: "#FAF7F2",
+                  borderRadius: "8px",
+                  border: "1px solid #EDE3D4",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#8E8880", textTransform: "uppercase", marginBottom: "4px" }}>
+                  Commit Note ({commitNote.trim() ? "Custom" : "Default"}):
+                </div>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "#2B2B2B" }}>
+                  &ldquo;{commitNote.trim() || resolvedDefaultPreview}&rdquo;
+                </div>
               </div>
 
               <p style={{ fontSize: "13px", color: "#4A4A4A", margin: "0 0 10px 0", lineHeight: 1.4 }}>
@@ -342,12 +322,12 @@ export function useAdminConfirm() {
                 </div>
               )}
 
-              <div style={{ position: "relative", marginBottom: "18px" }}>
+              <div style={{ position: "relative", marginBottom: "8px" }}>
                 <input
                   ref={passwordInputRef}
                   type={showPassword ? "text" : "password"}
                   required
-                  placeholder="Enter verification password"
+                  placeholder="Enter verification password (default: boxcare)"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -385,6 +365,11 @@ export function useAdminConfirm() {
                 >
                   {showPassword ? "🙈" : "👁️"}
                 </button>
+              </div>
+
+              <div style={{ fontSize: "11px", color: "#8E8880", marginBottom: "18px", display: "flex", alignItems: "center", gap: "4px" }}>
+                <span>💡</span>
+                <span>Default password: <strong style={{ color: "#5C3A22", fontFamily: "monospace" }}>boxcare</strong> (manageable in Settings)</span>
               </div>
 
               {/* Action Buttons for Step 2 */}

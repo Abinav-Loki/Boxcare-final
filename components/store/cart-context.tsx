@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { Product, getUnitPrice } from "@/lib/products-data";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
+import { Product, PRODUCTS, getUnitPrice } from "@/lib/products-data";
+import { getAdminProductsAction } from "@/app/actions/admin-products";
 
 export interface CartItem {
   product: Product;
@@ -22,10 +23,15 @@ interface CartContextType {
   quickViewProduct: Product | null;
   setQuickViewProduct: (product: Product | null) => void;
   wishlist: string[];
+  wishlistProducts: Product[];
+  wishlistCount: number;
   isWishlistOpen: boolean;
   setIsWishlistOpen: (open: boolean) => void;
   toggleWishlist: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
+  clearWishlist: () => void;
+  allProducts: Product[];
+  refreshProducts: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -36,7 +42,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>(PRODUCTS);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isProductsLoaded, setIsProductsLoaded] = useState(false);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await getAdminProductsAction();
+      if (res.success && res.data && res.data.length > 0) {
+        const dbProds = res.data as Product[];
+        const dbIds = new Set(dbProds.map((p) => p.id));
+        const dbSlugs = new Set(dbProds.map((p) => p.slug));
+
+        const staticFallbacks = PRODUCTS.filter((p) => !dbIds.has(p.id) && !dbSlugs.has(p.slug));
+        setAllProducts([...dbProds, ...staticFallbacks]);
+      } else {
+        setAllProducts(PRODUCTS);
+      }
+    } catch (e) {
+      console.error("Failed to load products in CartProvider", e);
+      setAllProducts(PRODUCTS);
+    } finally {
+      setIsProductsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   useEffect(() => {
     try {
@@ -73,6 +106,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [wishlist, isInitialized]);
+
+  // Clean stale/orphaned IDs from wishlist once products are verified
+  useEffect(() => {
+    if (isInitialized && isProductsLoaded && allProducts.length > 0 && wishlist.length > 0) {
+      const validIds = wishlist.filter((item) =>
+        allProducts.some((p) => p.id === item || p.slug === item)
+      );
+      if (validIds.length !== wishlist.length) {
+        setWishlist(validIds);
+      }
+    }
+  }, [isInitialized, isProductsLoaded, allProducts, wishlist]);
+
+  const wishlistProducts = useMemo(() => {
+    if (wishlist.length === 0) return [];
+    const list: Product[] = [];
+    const seen = new Set<string>();
+
+    for (const item of wishlist) {
+      const match = allProducts.find((p) => p.id === item || p.slug === item);
+      if (match && !seen.has(match.id)) {
+        seen.add(match.id);
+        list.push(match);
+      }
+    }
+    return list;
+  }, [wishlist, allProducts]);
+
+  const wishlistCount = wishlistProducts.length;
 
   const addToCart = (product: Product, quantity = 50, selectedSize?: string) => {
     setCart((prev) => {
@@ -111,6 +173,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const isInWishlist = (productId: string) => wishlist.includes(productId);
 
+  const clearWishlist = () => setWishlist([]);
+
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const subtotal = cart.reduce((total, item) => {
@@ -133,10 +197,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quickViewProduct,
         setQuickViewProduct,
         wishlist,
+        wishlistProducts,
+        wishlistCount,
         isWishlistOpen,
         setIsWishlistOpen,
         toggleWishlist,
         isInWishlist,
+        clearWishlist,
+        allProducts,
+        refreshProducts: loadProducts,
       }}
     >
       {children}

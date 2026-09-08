@@ -205,15 +205,16 @@ export function ProductsManager() {
       title: "Toggle Product Stock Status",
       message: "Are you sure you want to do this?",
       description: `Change "${product.name}" availability to "${newStatus}".`,
+      defaultCommitPreview: willBeInStock ? "Product activated" : "Product deactivated",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         // Optimistic UI update
         setProductsList((prev) =>
           prev.map((p) => (p.id === id ? { ...p, availability: newStatus } : p))
         );
 
         // Persist via Server Action
-        const res = await toggleProductStatusAction(id, dbStatus);
+        const res = await toggleProductStatusAction(id, dbStatus, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync note: ${res.error}`);
           loadData();
@@ -235,9 +236,9 @@ export function ProductsManager() {
       name: productForm.name.trim(),
       slug: generatedSlug,
       categoryId: productForm.categorySlug,
-      description: productForm.description.trim(),
+      description: productForm.description.trim() || undefined,
       status: (productForm.availability === "In Stock" ? "ACTIVE" : "INACTIVE") as "ACTIVE" | "INACTIVE",
-      imageUrl: productForm.image,
+      imageUrl: productForm.image || undefined,
       lengthIn: Number(productForm.length_in),
       widthIn: Number(productForm.width_in),
       heightIn: Number(productForm.height_in),
@@ -256,23 +257,30 @@ export function ProductsManager() {
       title: editingProduct ? `Update Product: ${productForm.name}` : `Create Product: ${productForm.name}`,
       message: "Are you sure you want to do this?",
       description: `Commit SKU details for "${productForm.name}" to the database.`,
+      defaultCommitPreview: editingProduct ? "Product updated" : "Product created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
           if (editingProduct) {
-            const res = await updateAdminProductAction(editingProduct.id, payload);
+            const res = await updateAdminProductAction(editingProduct.id, payload, commitNote);
             if (res.success && res.data) {
-              showToast(`✓ Updated product "${productForm.name}" in database`);
-              loadData();
+              setProductsList((prev) =>
+                prev.map((p) => (p.id === editingProduct.id ? (res.data as any) : p))
+              );
+              showToast(`✓ Product "${productForm.name}" updated successfully!`);
+              await loadData();
+              setIsProductModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to update product"}`);
             }
           } else {
-            const res = await createAdminProductAction(payload);
+            const res = await createAdminProductAction(payload, commitNote);
             if (res.success && res.data) {
-              showToast(`🎉 Created product SKU "${productForm.name}" in database`);
-              loadData();
+              setProductsList((prev) => [res.data as any, ...prev.filter((p) => p.id !== (res.data as any).id)]);
+              showToast(`🎉 Product SKU "${productForm.name}" created and added to database!`);
+              await loadData();
+              setIsProductModalOpen(false);
             } else {
               showToast(`⚠️ ${res.error || "Failed to create product"}`);
             }
@@ -281,7 +289,6 @@ export function ProductsManager() {
           showToast(`⚠️ Error: ${err.message || "Failed to save product"}`);
         } finally {
           setIsSubmitting(false);
-          setIsProductModalOpen(false);
         }
       },
     });
@@ -293,15 +300,17 @@ export function ProductsManager() {
       title: `Delete Product: ${product.name}`,
       message: "This action cannot be undone. Are you sure you want to delete this?",
       description: `Product "${product.name}" will be removed or deactivated safely in the database.`,
+      defaultCommitPreview: "Product deleted",
       confirmLabel: "Continue to Verify",
       isDelete: true,
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
-          const res = await deleteAdminProductAction(product.id);
+          const res = await deleteAdminProductAction(product.id, commitNote);
           if (res.success) {
+            setProductsList((prev) => prev.filter((p) => p.id !== product.id));
             showToast(`✓ Removed product "${product.name}"`);
-            loadData();
+            await loadData();
           } else {
             showToast(`⚠️ ${(res as any).error || "Failed to delete product"}`);
           }
@@ -315,7 +324,48 @@ export function ProductsManager() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px", paddingBottom: "48px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px", paddingBottom: "48px", position: "relative" }}>
+      {/* Toast Pop-Up Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "24px",
+            right: "28px",
+            zIndex: 99999,
+            background: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#FEF2F2" : "#ECFDF5",
+            border: `1.5px solid ${toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#F87171" : "#34D399"}`,
+            color: toastMessage.includes("⚠️") || toastMessage.includes("Error") ? "#991B1B" : "#065F46",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            fontSize: "13px",
+            fontWeight: 700,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.18)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            animation: "adminModalPop 0.2s ease-out",
+          }}
+        >
+          <span>{toastMessage.includes("⚠️") ? "⚠️" : "✓"}</span>
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontWeight: 800,
+              fontSize: "14px",
+              marginLeft: "6px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 1. Header & Actions */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
         <div>

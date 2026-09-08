@@ -142,14 +142,15 @@ export function BannersManager() {
       title: `${current ? "Hide" : "Publish"} Banner: ${title}`,
       message: "Are you sure you want to do this?",
       description: `Change banner visibility to ${!current ? "Active" : "Hidden"}.`,
+      defaultCommitPreview: !current ? "Banner published" : "Banner unpublished",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setBanners((prev) =>
           prev.map((b) => (b.id === id ? { ...b, isActive: !current } : b))
         );
         showToast(`Banner status updated to ${!current ? "Active 🟢" : "Hidden ⏸️"}`);
 
-        const res = await toggleBannerActiveAction(id, !current);
+        const res = await toggleBannerActiveAction(id, !current, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadBanners();
@@ -179,12 +180,13 @@ export function BannersManager() {
       title: editingBanner ? `Update Banner: ${formData.title}` : `Create Banner: ${formData.title}`,
       message: "Are you sure you want to do this?",
       description: `Save banner settings for "${formData.title}" to the database.`,
+      defaultCommitPreview: editingBanner ? "Banner updated" : "Banner created",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
           if (editingBanner) {
-            const res = await updateAdminBannerAction(editingBanner.id, payload);
+            const res = await updateAdminBannerAction(editingBanner.id, payload, commitNote);
             if (res.success) {
               showToast(`✓ Updated banner "${formData.title}"`);
               loadBanners();
@@ -192,7 +194,7 @@ export function BannersManager() {
               showToast(`⚠️ ${res.error || "Failed to update banner"}`);
             }
           } else {
-            const res = await createAdminBannerAction(payload);
+            const res = await createAdminBannerAction(payload, commitNote);
             if (res.success) {
               showToast(`🎉 Created banner "${formData.title}"`);
               loadBanners();
@@ -215,13 +217,14 @@ export function BannersManager() {
       title: `Delete Banner: ${b.title}`,
       message: "This action cannot be undone. Are you sure you want to delete this?",
       description: `Banner "${b.title}" will be permanently removed from the database.`,
+      defaultCommitPreview: "Banner deleted",
       confirmLabel: "Continue to Verify",
       isDelete: true,
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setBanners((prev) => prev.filter((item) => item.id !== b.id));
         showToast(`🗑️ Deleting banner "${b.title}"...`);
 
-        const res = await deleteAdminBannerAction(b.id);
+        const res = await deleteAdminBannerAction(b.id, commitNote);
         if (res.success) {
           showToast(`🗑️ Removed banner "${b.title}"`);
           loadBanners();

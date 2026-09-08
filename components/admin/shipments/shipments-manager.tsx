@@ -159,14 +159,15 @@ export function ShipmentsManager() {
       title: `Update Shipment: Order #${num}`,
       message: "Are you sure you want to do this?",
       description: `Change shipment status of order #${num} to "${newStatus}".`,
+      defaultCommitPreview: "Shipment status changed",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setShipments((prev) =>
           prev.map((s) => (s.id === shipmentId ? { ...s, status: newStatus } : s))
         );
         showToast(`Shipment updated to ${newStatus}`);
 
-        const res = await updateAdminShipmentStatusAction(shipmentId, newStatus);
+        const res = await updateAdminShipmentStatusAction(shipmentId, newStatus, commitNote);
         if (!res.success) {
           showToast(`⚠️ Sync notice: ${res.error}`);
           loadData();
@@ -195,12 +196,13 @@ export function ShipmentsManager() {
       title: editingShipment ? `Update Shipment: Order #${editingShipment.orderNumber}` : `Create Shipment Record`,
       message: "Are you sure you want to do this?",
       description: `Save courier tracking details to the database.`,
+      defaultCommitPreview: editingShipment ? "Shipment updated" : "Shipment status changed",
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
+      onConfirm: async (commitNote?: string) => {
         setIsSubmitting(true);
         try {
           if (editingShipment) {
-            const res = await updateAdminShipmentAction(editingShipment.id, payload);
+            const res = await updateAdminShipmentAction(editingShipment.id, payload, commitNote);
             if (res.success) {
               showToast("✓ Updated shipment details");
               loadData();
@@ -208,7 +210,7 @@ export function ShipmentsManager() {
               showToast(`⚠️ ${res.error || "Failed to update shipment"}`);
             }
           } else {
-            const res = await createAdminShipmentAction(payload as any);
+            const res = await createAdminShipmentAction(payload as any, commitNote);
             if (res.success) {
               showToast("🎉 Created shipment & synced with Order");
               loadData();

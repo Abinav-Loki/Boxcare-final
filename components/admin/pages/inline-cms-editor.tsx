@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { StorefrontPage, STOREFRONT_PAGES_LIST } from "./pages-types";
 import { useLiveCms, publishDraftCms } from "@/lib/cms-data";
 import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
+import { updateAdminPageAction } from "@/app/actions/admin-pages";
 
 interface InlineCmsEditorProps {
   page: StorefrontPage;
@@ -231,45 +232,113 @@ export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
   };
 
   const handleSave = () => {
+    const targetSlug = currentRoute.replace(/^\/+|\/+$/g, "") || "home";
+    const targetPage = STOREFRONT_PAGES_LIST.find((p) => p.path === currentRoute) || page;
+    const targetTitle = targetPage?.title || page.title;
+
     confirmAction({
       title: "Save CMS Changes",
-      message: "Are you sure you want to save these CMS changes?",
+      message: `Are you sure you want to save CMS changes for "${targetTitle}"?`,
       description: "Save all current text edits, image replacements, and layout styling to draft.",
+      defaultCommitPreview: `Page "${targetTitle}" updated`,
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
-        setSaveStatus("💾 All text & image changes saved to draft successfully!");
-        setTimeout(() => setSaveStatus(null), 3500);
+      onConfirm: async (commitNote?: string) => {
+        try {
+          const res = await updateAdminPageAction(
+            targetSlug,
+            {
+              title: targetTitle,
+              content: `CMS Studio Draft for ${targetTitle}`,
+            },
+            commitNote
+          );
+          if (res.success) {
+            setSaveStatus(`💾 Changes for "${targetTitle}" saved to draft & Activity History!`);
+          } else {
+            setSaveStatus(`⚠️ ${res.error || "Failed to save to database"}`);
+          }
+          setTimeout(() => setSaveStatus(null), 3500);
+        } catch {
+          setSaveStatus("💾 Changes saved to local preview.");
+          setTimeout(() => setSaveStatus(null), 3500);
+        }
       },
     });
   };
 
   const handlePublish = () => {
+    const targetSlug = currentRoute.replace(/^\/+|\/+$/g, "") || "home";
+    const targetPage = STOREFRONT_PAGES_LIST.find((p) => p.path === currentRoute) || page;
+    const targetTitle = targetPage?.title || page.title;
+
     confirmAction({
       title: "Publish Storefront CMS Live",
-      message: "Are you sure you want to publish these changes live to the customer storefront?",
+      message: `Are you sure you want to publish changes for "${targetTitle}" live to the customer storefront?`,
       description: "All visual layout modifications, text updates, image replacements, and custom styling will become live and visible to customer storefront shoppers immediately.",
+      defaultCommitPreview: `Page "${targetTitle}" published live`,
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
-        publishDraftCms();
-        iframeRef.current?.contentWindow?.postMessage({ type: "CMS_PUBLISHED" }, "*");
-        setSaveStatus("🚀 Published all changes to live storefront successfully!");
-        setTimeout(() => setSaveStatus(null), 4000);
+      onConfirm: async (commitNote?: string) => {
+        try {
+          publishDraftCms();
+          iframeRef.current?.contentWindow?.postMessage({ type: "CMS_PUBLISHED" }, "*");
+          const res = await updateAdminPageAction(
+            targetSlug,
+            {
+              title: targetTitle,
+              content: `CMS Studio Live Published for ${targetTitle}`,
+              isActive: true,
+            },
+            commitNote || `Page "${targetTitle}" published live`
+          );
+          if (res.success) {
+            setSaveStatus(`🚀 Published "${targetTitle}" live & logged to Activity History!`);
+          } else {
+            setSaveStatus(`⚠️ ${res.error || "Failed to sync to database"}`);
+          }
+          setTimeout(() => setSaveStatus(null), 4000);
+        } catch {
+          setSaveStatus("🚀 Published changes to storefront.");
+          setTimeout(() => setSaveStatus(null), 4000);
+        }
       },
     });
   };
 
   const handleReset = () => {
+    const targetSlug = currentRoute.replace(/^\/+|\/+$/g, "") || "home";
+    const targetPage = STOREFRONT_PAGES_LIST.find((p) => p.path === currentRoute) || page;
+    const targetTitle = targetPage?.title || page.title;
+
     confirmAction({
       title: "Reset Storefront Layout to Factory Defaults",
-      message: "This action cannot be undone. Are you sure you want to reset all storefront content back to default factory settings?",
+      message: `This action cannot be undone. Are you sure you want to reset "${targetTitle}" content back to default factory settings?`,
       description: "All custom text, images, and styling will be permanently restored to factory defaults and published live.",
+      defaultCommitPreview: `Page "${targetTitle}" reset to factory defaults`,
       confirmLabel: "Continue to Verify",
-      onConfirm: async () => {
-        resetCms();
-        publishDraftCms();
-        setIframeKey(Date.now());
-        setSaveStatus("Default storefront layout restored and published.");
-        setTimeout(() => setSaveStatus(null), 3000);
+      onConfirm: async (commitNote?: string) => {
+        try {
+          resetCms();
+          publishDraftCms();
+          setIframeKey(Date.now());
+          const res = await updateAdminPageAction(
+            targetSlug,
+            {
+              title: targetTitle,
+              content: `CMS Factory Defaults for ${targetTitle}`,
+              isActive: true,
+            },
+            commitNote || `Page "${targetTitle}" reset to factory defaults`
+          );
+          if (res.success) {
+            setSaveStatus(`Default layout for "${targetTitle}" restored & logged to Activity History.`);
+          } else {
+            setSaveStatus(`⚠️ ${res.error || "Failed to sync to database"}`);
+          }
+          setTimeout(() => setSaveStatus(null), 3000);
+        } catch {
+          setSaveStatus("Default storefront layout restored.");
+          setTimeout(() => setSaveStatus(null), 3000);
+        }
       },
     });
   };
