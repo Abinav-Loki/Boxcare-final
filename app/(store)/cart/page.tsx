@@ -277,7 +277,7 @@ export default function ShoppingCartPage() {
                             ₹{unitPrice.toFixed(2)} / pc
                           </div>
                           <div style={{ fontSize: "1.2rem", fontWeight: 900, color: "#D68A45" }}>
-                            ₹{lineTotal.toLocaleString()}
+                            ₹{(lineTotal ?? 0).toLocaleString()}
                           </div>
                         </div>
                       </div>
@@ -349,7 +349,7 @@ export default function ShoppingCartPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #F0E8DE", paddingTop: "16px", marginBottom: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.92rem", color: "#555" }}>
                   <span>Items Subtotal:</span>
-                  <span style={{ fontWeight: 700, color: "#2E1A0C" }}>₹{subtotal.toLocaleString()}</span>
+                  <span style={{ fontWeight: 700, color: "#2E1A0C" }}>₹{(subtotal ?? 0).toLocaleString()}</span>
                 </div>
 
                 {discountAmount > 0 && (
@@ -388,7 +388,7 @@ export default function ShoppingCartPage() {
                   <div style={{ fontSize: "0.75rem", color: "#8B5E3C" }}>Prices in INR (All taxes incl.)</div>
                 </div>
                 <span style={{ fontSize: "1.5rem", fontWeight: 900, color: "#D68A45" }}>
-                  ₹{grandTotal.toLocaleString()}
+                  ₹{(grandTotal ?? 0).toLocaleString()}
                 </span>
               </div>
 

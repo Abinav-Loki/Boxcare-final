@@ -134,7 +134,7 @@ export function CustomBoxCalculator() {
   const grandTotal = subtotal + gst;
 
   const formatPrice = (val: number) =>
-    "₹" + val.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    "₹" + (val ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 
   // 3D Canvas Box Scaling
   const maxPx = 160;

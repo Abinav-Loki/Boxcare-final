@@ -9,7 +9,90 @@
 * 🟢 You can import this file directly.
 */
 
+export const Role = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  OPERATIONS: 'OPERATIONS',
+  CATALOG: 'CATALOG'
+} as const
+
+export type Role = (typeof Role)[keyof typeof Role]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const ProductStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+} as const
+
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]
+
+
+export const OrderStatus = {
+  PENDING_PAYMENT: 'PENDING_PAYMENT',
+  PAYMENT_FAILED: 'PAYMENT_FAILED',
+  PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
+  PROCESSING: 'PROCESSING',
+  PACKED: 'PACKED',
+  SHIPPED: 'SHIPPED',
+  OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+  DELIVERED: 'DELIVERED',
+  CANCELLED: 'CANCELLED',
+  RETURNED: 'RETURNED',
+  REFUNDED: 'REFUNDED'
+} as const
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+
+
+export const PaymentStatus = {
+  PENDING: 'PENDING',
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED'
+} as const
+
+export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus]
+
+
+export const ShipmentStatus = {
+  NOT_SHIPPED: 'NOT_SHIPPED',
+  PROCESSING: 'PROCESSING',
+  PACKED: 'PACKED',
+  SHIPPED: 'SHIPPED',
+  OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+  DELIVERED: 'DELIVERED',
+  RETURNED: 'RETURNED'
+} as const
+
+export type ShipmentStatus = (typeof ShipmentStatus)[keyof typeof ShipmentStatus]
+
+
+export const DiscountType = {
+  PERCENTAGE: 'PERCENTAGE',
+  FLAT: 'FLAT'
+} as const
+
+export type DiscountType = (typeof DiscountType)[keyof typeof DiscountType]
+
+
+export const NavigationItemType = {
+  CATEGORY: 'CATEGORY',
+  PRODUCT: 'PRODUCT',
+  PAGE: 'PAGE',
+  POLICY: 'POLICY',
+  CUSTOM_URL: 'CUSTOM_URL'
+} as const
+
+export type NavigationItemType = (typeof NavigationItemType)[keyof typeof NavigationItemType]
+
+
+export const NavigationLocation = {
+  HEADER: 'HEADER',
+  FOOTER: 'FOOTER',
+  CATEGORY_MENU: 'CATEGORY_MENU',
+  MOBILE: 'MOBILE',
+  FEATURED: 'FEATURED'
+} as const
+
+export type NavigationLocation = (typeof NavigationLocation)[keyof typeof NavigationLocation]

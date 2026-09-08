@@ -4,19 +4,23 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "./cart-context";
+import { useCustomerAuth } from "@/lib/auth/customer-auth-context";
 import { PRODUCTS, Product } from "@/lib/products-data";
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { cartCount, setIsCartOpen, wishlist, isWishlistOpen, setIsWishlistOpen, toggleWishlist, isInWishlist, addToCart } = useCart();
+  const { user, isLoggedIn, signOut } = useCustomerAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const headerRef = useRef<HTMLElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [overlayTop, setOverlayTop] = useState<number>(130);
@@ -91,11 +95,15 @@ export function Navbar() {
       if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isSearchOpen) {
-        setIsSearchOpen(false);
+      if (e.key === "Escape") {
+        if (isSearchOpen) setIsSearchOpen(false);
+        if (isUserMenuOpen) setIsUserMenuOpen(false);
       }
     };
 
@@ -105,11 +113,12 @@ export function Navbar() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isSearchOpen]);
+  }, [isSearchOpen, isUserMenuOpen]);
 
-  // Close search bar on route change
+  // Close search bar & user menu on route change
   useEffect(() => {
     setIsSearchOpen(false);
+    setIsUserMenuOpen(false);
   }, [pathname]);
 
   // Live filtering
@@ -332,18 +341,251 @@ export function Navbar() {
             {wishlist.length > 0 && <span className="badge">{wishlist.length}</span>}
           </button>
 
-          {/* User Account Button */}
-          <button
-            className="icon-btn"
-            aria-label="Account"
-            id="account-toggle-btn"
-            onClick={() => router.push("/signin")}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </button>
+          {/* User Account Button & Dropdown */}
+          <div ref={userMenuRef} style={{ position: "relative" }}>
+            {isLoggedIn && user ? (
+              <button
+                className="icon-btn"
+                aria-label="Account Profile"
+                id="account-profile-btn"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "4px",
+                  borderRadius: "50%",
+                  border: isUserMenuOpen ? "2px solid #5C3A22" : "1.5px solid #D68A45",
+                  background: "#FAF7F2",
+                  cursor: "pointer",
+                }}
+                title={`Logged in as ${user.name}`}
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "26px",
+                      height: "26px",
+                      borderRadius: "50%",
+                      backgroundColor: "#5C3A22",
+                      color: "#FFFFFF",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {user.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() || "U"}
+                  </div>
+                )}
+                {/* Active status indicator dot */}
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: "-1px",
+                    right: "-1px",
+                    width: "8px",
+                    height: "8px",
+                    backgroundColor: "#10B981",
+                    borderRadius: "50%",
+                    border: "1.5px solid #FFFFFF",
+                  }}
+                />
+              </button>
+            ) : (
+              <button
+                className="icon-btn"
+                aria-label="Sign In"
+                id="account-signin-btn"
+                onClick={() => router.push("/signin")}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </button>
+            )}
+
+            {/* Authenticated User Menu Dropdown */}
+            {isLoggedIn && user && isUserMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 10px)",
+                  right: 0,
+                  width: "260px",
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: "14px",
+                  boxShadow: "0 12px 30px rgba(92, 58, 34, 0.15)",
+                  border: "1px solid #EAE0D5",
+                  padding: "12px",
+                  zIndex: 1000,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                }}
+              >
+                {/* User Header */}
+                <div
+                  style={{
+                    padding: "8px 10px 12px",
+                    borderBottom: "1px solid #F0E6DA",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#1F1A16" }}>
+                    {user.name}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#8C7E72", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {user.email}
+                  </div>
+                  {user.membershipTier && (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginTop: "6px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: "#5C3A22",
+                        backgroundColor: "#F7F2EC",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        border: "1px solid #E5D8C8",
+                      }}
+                    >
+                      {user.membershipTier}
+                    </span>
+                  )}
+                </div>
+
+                {/* Profile Link */}
+                <Link
+                  href="/profile"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#2C2520",
+                    textDecoration: "none",
+                    transition: "background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "#FAF7F2")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C3A22" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <span>Customer Profile</span>
+                </Link>
+
+                {/* Orders Link */}
+                <Link
+                  href="/profile?tab=orders"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#2C2520",
+                    textDecoration: "none",
+                    transition: "background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "#FAF7F2")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C3A22" strokeWidth="2">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                  <span>Order History ({user.orders.length})</span>
+                </Link>
+
+                {/* Saved Addresses Link */}
+                <Link
+                  href="/profile?tab=addresses"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#2C2520",
+                    textDecoration: "none",
+                    transition: "background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "#FAF7F2")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C3A22" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span>Saved Addresses ({user.addresses.length})</span>
+                </Link>
+
+                {/* Divider */}
+                <div style={{ height: "1px", backgroundColor: "#F0E6DA", margin: "4px 0" }} />
+
+                {/* Sign Out Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    signOut();
+                    setIsUserMenuOpen(false);
+                    router.push("/");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#DC2626",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    width: "100%",
+                    transition: "background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "#FEF2F2")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Cart Icon Button */}
           <button
@@ -734,29 +976,118 @@ export function Navbar() {
             <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>About Us</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} style={{ fontWeight: 600, padding: "8px 0" }}>Contact & FAQs</Link>
             <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid #E5D8C8" }}>
-              <Link
-                href="/signin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  padding: "10px",
-                  backgroundColor: "#5C3A22",
-                  color: "#FFFFFF",
-                  borderRadius: "8px",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  textDecoration: "none",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-                <span>Sign In / Register</span>
-              </Link>
+              {isLoggedIn && user ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0" }}>
+                    {user.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.name}
+                        style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          backgroundColor: "#5C3A22",
+                          color: "#FFFFFF",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {user.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ overflow: "hidden" }}>
+                      <div style={{ fontSize: "14px", fontWeight: 700, color: "#1F1A16" }}>{user.name}</div>
+                      <div style={{ fontSize: "11px", color: "#8C7E72" }}>{user.email}</div>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      padding: "10px",
+                      backgroundColor: "#5C3A22",
+                      color: "#FFFFFF",
+                      borderRadius: "8px",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>My Account Profile</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      signOut();
+                      setIsMobileMenuOpen(false);
+                      router.push("/");
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      padding: "8px",
+                      backgroundColor: "#F7F2EC",
+                      color: "#DC2626",
+                      border: "1px solid #E5D8C8",
+                      borderRadius: "8px",
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/signin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    padding: "10px",
+                    backgroundColor: "#5C3A22",
+                    color: "#FFFFFF",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    textDecoration: "none",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <span>Sign In / Register</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>

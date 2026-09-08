@@ -1,11 +1,11 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+import React from "react";
+import { ShipmentsManager } from "@/components/admin/shipments/shipments-manager";
+
+export const metadata = {
+  title: "Shipments & Logistics | BoxCare Admin",
+  description: "Track dispatches, courier partners, AWB tracking numbers, and fulfillment progress.",
+};
 
 export default function AdminShipmentsPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer C"
-      title="Admin Shipments"
-      description="Manual shipment manager for courier name, tracking number, tracking URL, status, shipped date, delivered date, and notes."
-    />
-  );
+  return <ShipmentsManager />;
 }

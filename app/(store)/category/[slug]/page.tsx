@@ -1,30 +1,56 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getProductsByCategory, CATEGORIES, PRODUCTS, Product } from "@/lib/products-data";
 import { useCart } from "@/components/store/cart-context";
 import { NewsletterSection } from "@/components/store/newsletter-section";
+import { getAdminProductsAction } from "@/app/actions/admin-products";
+import { getAdminCategoriesAction } from "@/app/actions/admin-categories";
 
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
   const slug = (params?.slug as string) || "mailer-boxes";
   const { addToCart, setIsCartOpen, toggleWishlist, isInWishlist } = useCart();
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [dbCategory, setDbCategory] = useState<any>(null);
 
-  const categoryInfo = CATEGORIES.find((c) => c.slug === slug || c.id === slug) || {
+  useEffect(() => {
+    async function loadCategoryData() {
+      try {
+        const [pRes, cRes] = await Promise.all([
+          getAdminProductsAction({ categorySlug: slug }),
+          getAdminCategoriesAction(),
+        ]);
+        if (pRes.success && pRes.data && pRes.data.length > 0) {
+          setDbProducts(pRes.data as any);
+        }
+        if (cRes.success && cRes.data) {
+          const found = cRes.data.find((c: any) => c.slug === slug || c.id === slug);
+          if (found) setDbCategory(found);
+        }
+      } catch (err) {
+        console.error("Failed to load category products:", err);
+      }
+    }
+    loadCategoryData();
+  }, [slug]);
+
+  const categoryInfo = dbCategory || CATEGORIES.find((c) => c.slug === slug || c.id === slug) || {
     id: slug,
     name: slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
     slug: slug,
-    description: "High-strength corrugated mailer boxes engineered for e-commerce, D2C, and subscription packaging. Lock securely without tape with direct manufacturer pricing and fast nationwide shipping across India.",
+    description: "High-strength corrugated packaging engineered for e-commerce, D2C, and retail. Lock securely with direct manufacturer pricing and fast nationwide shipping across India.",
     image: "/images/mailer-boxes.png",
   };
 
   const categoryProducts = useMemo(() => {
+    if (dbProducts.length > 0) return dbProducts;
     const prods = getProductsByCategory(slug);
     return prods.length > 0 ? prods : PRODUCTS;
-  }, [slug]);
+  }, [dbProducts, slug]);
 
   // Filter States
   const [inStock, setInStock] = useState<boolean>(true);

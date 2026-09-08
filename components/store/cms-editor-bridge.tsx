@@ -13,7 +13,7 @@ export function CmsEditorBridge() {
   const searchParams = useSearchParams();
   const [isEditMode, setIsEditMode] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { updateCms, undo, redo } = useLiveCms();
+  const { cms, updateCms, undo, redo, canUndo, canRedo } = useLiveCms();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeImageRef = useRef<HTMLImageElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
@@ -34,19 +34,102 @@ export function CmsEditorBridge() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // -------------------------------------------------------------
+  // 1. STOREFRONT PERSISTENCE ENGINE (Runs for both Storefront & CMS Editor)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const applyStoredOverrides = () => {
+      if (!cms.imageOverrides && !cms.imageStyles) return;
+      const overrides = cms.imageOverrides || {};
+      const styles = cms.imageStyles || {};
+
+      const images = document.querySelectorAll("img");
+      images.forEach((img) => {
+        const currentSrc = img.getAttribute("src") || img.src;
+        const originalSrc = img.getAttribute("data-original-src") || currentSrc;
+        if (!img.hasAttribute("data-original-src") && currentSrc) {
+          img.setAttribute("data-original-src", originalSrc);
+        }
+
+        // 1. Match image replacement
+        const match =
+          overrides[originalSrc] ||
+          overrides[currentSrc] ||
+          (img.alt ? overrides[`alt:${img.alt.trim()}`] : null);
+
+        if (match && img.src !== match) {
+          img.src = match;
+        }
+
+        // 2. Match image style overrides
+        const styleMatch =
+          styles[originalSrc] ||
+          styles[currentSrc] ||
+          (img.alt ? styles[`alt:${img.alt.trim()}`] : null);
+
+        if (styleMatch) {
+          if (styleMatch.sizePercent !== undefined) {
+            img.style.maxWidth = `${styleMatch.sizePercent}%`;
+            img.style.height = "auto";
+          }
+          if (styleMatch.opacity !== undefined) {
+            img.style.opacity = `${styleMatch.opacity}`;
+          }
+          if (styleMatch.isHidden !== undefined) {
+            img.style.visibility = styleMatch.isHidden ? "hidden" : "visible";
+            if (styleMatch.isHidden) {
+              img.dataset.cmsHidden = "true";
+            } else {
+              delete img.dataset.cmsHidden;
+            }
+          }
+        }
+      });
+    };
+
+    applyStoredOverrides();
+
+    // Use MutationObserver for tabs / lazy loaded images
+    const observer = new MutationObserver(() => {
+      applyStoredOverrides();
+    });
+
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    return () => observer.disconnect();
+  }, [cms.imageOverrides, cms.imageStyles]);
+
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && activeImageRef.current) {
       const reader = new FileReader();
       const currentImg = activeImageRef.current;
       const prevSrc = currentImg.src;
+      const origSrc = currentImg.getAttribute("data-original-src") || currentImg.getAttribute("src") || currentImg.src;
+
       reader.onload = (event) => {
         if (event.target?.result && currentImg) {
           const newSrc = event.target.result as string;
           undoStackRef.current.push({ type: "IMAGE_SRC", element: currentImg, prev: prevSrc, next: newSrc });
           redoStackRef.current = [];
           currentImg.src = newSrc;
-          showToast("📷 Image updated successfully from file upload!");
+
+          // Save to CMS Persistent Store
+          updateCms((prev) => {
+            const overrides = { ...(prev.imageOverrides || {}) };
+            overrides[origSrc] = newSrc;
+            if (currentImg.getAttribute("src")) overrides[currentImg.getAttribute("src")!] = newSrc;
+            if (currentImg.alt) overrides[`alt:${currentImg.alt.trim()}`] = newSrc;
+
+            return {
+              ...prev,
+              imageOverrides: overrides,
+            };
+          });
+
+          showToast("📷 Image updated & saved across storefront!");
           window.parent?.postMessage(
             { type: "CMS_IMAGE_CHANGED", src: event.target.result },
             "*"
@@ -111,11 +194,28 @@ export function CmsEditorBridge() {
           return;
         }
         if (img) {
+          const origSrc = img.getAttribute("data-original-src") || img.getAttribute("src") || img.src;
+
           if (src !== undefined && img.src !== src) {
             undoStackRef.current.push({ type: "IMAGE_SRC", element: img, prev: img.src, next: src });
             img.src = src;
-            showToast("📷 Image swapped from storefront media library!");
+
+            // Save to CMS Persistent Store
+            updateCms((prev) => {
+              const overrides = { ...(prev.imageOverrides || {}) };
+              overrides[origSrc] = src;
+              if (img.getAttribute("src")) overrides[img.getAttribute("src")!] = src;
+              if (img.alt) overrides[`alt:${img.alt.trim()}`] = src;
+
+              return {
+                ...prev,
+                imageOverrides: overrides,
+              };
+            });
+
+            showToast("📷 Image updated & saved across storefront!");
           }
+
           if (sizePercent !== undefined) {
             undoStackRef.current.push({ type: "STYLE", element: img, prop: "maxWidth", prev: img.style.maxWidth || "", next: `${sizePercent}%` });
             img.style.maxWidth = `${sizePercent}%`;
@@ -134,12 +234,31 @@ export function CmsEditorBridge() {
               delete img.dataset.cmsHidden;
             }
           }
+
+          // Save styles to persistent CMS store
+          if (sizePercent !== undefined || opacity !== undefined || isHidden !== undefined) {
+            updateCms((prev) => {
+              const styles = { ...(prev.imageStyles || {}) };
+              styles[origSrc] = {
+                ...(styles[origSrc] || {}),
+                ...(sizePercent !== undefined ? { sizePercent } : {}),
+                ...(opacity !== undefined ? { opacity } : {}),
+                ...(isHidden !== undefined ? { isHidden } : {}),
+              };
+              return {
+                ...prev,
+                imageStyles: styles,
+              };
+            });
+          }
+
           redoStackRef.current = [];
         }
       }
 
       // 3. TRIGGER UNDO
       else if (event.data.type === "TRIGGER_UNDO") {
+        let appliedDom = false;
         if (undoStackRef.current.length > 0) {
           const action = undoStackRef.current.pop()!;
           redoStackRef.current.push(action);
@@ -157,12 +276,25 @@ export function CmsEditorBridge() {
           } else if (action.type === "IMAGE_SRC") {
             action.element.src = action.prev;
           }
+          appliedDom = true;
         }
-        undo();
+        const didUndoCms = undo();
+        if (appliedDom || didUndoCms) {
+          showToast("↩️ Undo applied");
+        }
+        window.parent?.postMessage(
+          {
+            type: "CMS_HISTORY_UPDATED",
+            canUndo: undoStackRef.current.length > 0 || canUndo,
+            canRedo: redoStackRef.current.length > 0 || canRedo,
+          },
+          "*"
+        );
       }
 
       // 4. TRIGGER REDO
       else if (event.data.type === "TRIGGER_REDO") {
+        let appliedDom = false;
         if (redoStackRef.current.length > 0) {
           const action = redoStackRef.current.pop()!;
           undoStackRef.current.push(action);
@@ -180,14 +312,37 @@ export function CmsEditorBridge() {
           } else if (action.type === "IMAGE_SRC") {
             action.element.src = action.next;
           }
+          appliedDom = true;
         }
-        redo();
+        const didRedoCms = redo();
+        if (appliedDom || didRedoCms) {
+          showToast("↪️ Redo applied");
+        }
+        window.parent?.postMessage(
+          {
+            type: "CMS_HISTORY_UPDATED",
+            canUndo: undoStackRef.current.length > 0 || canUndo,
+            canRedo: redoStackRef.current.length > 0 || canRedo,
+          },
+          "*"
+        );
       }
     };
 
     window.addEventListener("message", handleParentMessage);
+
+    // Initial broadcast of history availability to Studio toolbar
+    window.parent?.postMessage(
+      {
+        type: "CMS_HISTORY_UPDATED",
+        canUndo: undoStackRef.current.length > 0 || canUndo,
+        canRedo: redoStackRef.current.length > 0 || canRedo,
+      },
+      "*"
+    );
+
     return () => window.removeEventListener("message", handleParentMessage);
-  }, [isEditMode]);
+  }, [isEditMode, undo, redo, canUndo, canRedo]);
 
   // Forward keyboard shortcuts from within the iframe to the Studio parent
   useEffect(() => {

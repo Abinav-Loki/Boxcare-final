@@ -3,6 +3,12 @@
 import React, { useState } from "react";
 import { AdminCoupon } from "./coupon-types";
 
+function formatDateString(val: any): string {
+  if (!val) return "";
+  if (val instanceof Date) return val.toISOString().split("T")[0];
+  return String(val);
+}
+
 interface CouponDetailsDrawerProps {
   coupon: AdminCoupon | null;
   onClose: () => void;
@@ -90,7 +96,9 @@ export function CouponDetailsDrawer({
               <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#2E1A0C" }}>
                 Coupon Details
               </h2>
-              <span style={{ fontSize: "0.78rem", color: "#888" }}>ID: {coupon.id} • Created {coupon.createdAt}</span>
+              <span style={{ fontSize: "0.78rem", color: "#888" }}>
+                ID: {coupon.id} • Created {formatDateString(coupon.createdAt)}
+              </span>
             </div>
           </div>
           <button
@@ -160,7 +168,7 @@ export function CouponDetailsDrawer({
             <div style={{ background: "#FBF9F5", border: "1px solid #EDE3D4", borderRadius: "10px", padding: "12px 16px" }}>
               <span style={{ fontSize: "0.75rem", color: "#888", fontWeight: 600 }}>Total Redemptions</span>
               <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#2E1A0C", marginTop: "2px" }}>
-                {coupon.usageCount.toLocaleString()}
+                {(coupon.usageCount ?? 0).toLocaleString()}
               </div>
               <span style={{ fontSize: "0.75rem", color: "#15803D", fontWeight: 600 }}>
                 {coupon.usageLimit ? `${percentUsed}% of quota` : "Unlimited tier"}
@@ -194,7 +202,7 @@ export function CouponDetailsDrawer({
             <div style={{ background: "#FBF9F5", border: "1px solid #EDE3D4", borderRadius: "10px", padding: "12px 16px" }}>
               <span style={{ fontSize: "0.75rem", color: "#888", fontWeight: 600 }}>Customer Savings</span>
               <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#15803D", marginTop: "2px" }}>
-                ₹{estimatedSavings.toLocaleString()}
+                ₹{(estimatedSavings ?? 0).toLocaleString()}
               </div>
               <span style={{ fontSize: "0.75rem", color: "#888" }}>Generated to date</span>
             </div>
@@ -232,11 +240,13 @@ export function CouponDetailsDrawer({
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#666" }}>Minimum Order Value:</span>
-                <span style={{ fontWeight: 700, color: "#2E1A0C" }}>₹{coupon.minOrderValue.toLocaleString()}</span>
+                <span style={{ fontWeight: 700, color: "#2E1A0C" }}>₹{(coupon.minOrderValue ?? 0).toLocaleString()}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#666" }}>Valid Date Range:</span>
-                <span style={{ fontWeight: 700, color: "#2E1A0C" }}>{coupon.validFrom} → {coupon.validUntil}</span>
+                <span style={{ fontWeight: 700, color: "#2E1A0C" }}>
+                  {formatDateString(coupon.validFrom)} → {formatDateString(coupon.validUntil)}
+                </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "#666" }}>Current Status:</span>

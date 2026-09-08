@@ -9,6 +9,8 @@ export interface AdminCategory {
   status: "ACTIVE" | "INACTIVE";
   stockStatus: "IN_STOCK" | "OUT_OF_STOCK";
   featured: boolean;
+  offerBadge?: string;
+  offerText?: string;
 }
 
 export const INITIAL_STOREFRONT_CATEGORIES: AdminCategory[] = [

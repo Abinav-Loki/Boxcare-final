@@ -1,9 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { getAdminDashboardMetricsAction } from "@/app/actions/admin-dashboard";
 
 export function TopProductsAndStock() {
+  const [metrics, setMetrics] = useState<any>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await getAdminDashboardMetricsAction();
+        if (res.success && res.data) {
+          setMetrics(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load top products / stock:", err);
+      }
+    }
+    load();
+  }, []);
+
   const topProducts = [
     {
       id: "mb-1",
@@ -28,32 +45,18 @@ export function TopProductsAndStock() {
     },
   ];
 
-  const lowStockItems = [
-    {
-      id: "st-1",
-      name: "Reinforced 5-Ply Heavy Box (14x10x8)",
-      sku: "BX-5P-14108",
-      stock: 45,
-      threshold: 200,
-      status: "CRITICAL",
-    },
-    {
-      id: "st-2",
-      name: "Water-Activated Kraft Tape (50m)",
-      sku: "TP-KRAFT-50",
-      stock: 18,
-      threshold: 100,
-      status: "CRITICAL",
-    },
-    {
-      id: "st-3",
-      name: "White Mailer Box (5x5x2)",
-      sku: "BX-WM-05052",
-      stock: 120,
-      threshold: 250,
-      status: "LOW",
-    },
-  ];
+  const lowStockItems: any[] = metrics?.lowStockItems?.length > 0
+    ? metrics.lowStockItems
+    : [
+        {
+          id: "st-1",
+          name: "6.00 X 4.00 X 2.50 Inch Shipping Box",
+          sku: "corrugated-box-6x4x2-5-50",
+          stock: 45,
+          threshold: 100,
+          status: "LOW",
+        },
+      ];
 
   return (
     <div
@@ -108,7 +111,7 @@ export function TopProductsAndStock() {
                 </div>
                 <div>
                   <div style={{ fontSize: "12px", fontWeight: 700, color: "#2B2B2B" }}>{prod.name}</div>
-                  <div style={{ fontSize: "11px", color: "#8E8880" }}>{prod.category} • {prod.salesCount.toLocaleString()} sold</div>
+                  <div style={{ fontSize: "11px", color: "#8E8880" }}>{prod.category} • {(prod.salesCount ?? 0).toLocaleString()} sold</div>
                 </div>
               </div>
               <div style={{ fontSize: "12px", fontWeight: 800, color: "#2B2B2B" }}>

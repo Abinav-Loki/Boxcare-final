@@ -1,72 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-
-interface OrderItem {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  customerEmail: string;
-  date: string;
-  itemsSummary: string;
-  quantity: number;
-  totalAmount: number;
-  paymentStatus: "SUCCESS" | "PENDING";
-  fulfillmentStatus: "PROCESSING" | "SHIPPED" | "DELIVERED";
-}
+import { getAdminDashboardMetricsAction } from "@/app/actions/admin-dashboard";
 
 export function RecentOrdersTable() {
-  const recentOrders: OrderItem[] = [
-    {
-      id: "ord-101",
-      orderNumber: "#BX-1048",
-      customerName: "Aakash Mehta",
-      customerEmail: "aakash.m@crafts.in",
-      date: "Today, 4:25 PM",
-      itemsSummary: "Mailer Box 3.3x2.75x1",
-      quantity: 500,
-      totalAmount: 4850,
-      paymentStatus: "SUCCESS",
-      fulfillmentStatus: "PROCESSING",
-    },
-    {
-      id: "ord-102",
-      orderNumber: "#BX-1047",
-      customerName: "Priya Sharma",
-      customerEmail: "priya@organickit.com",
-      date: "Today, 2:10 PM",
-      itemsSummary: "Custom 3-Ply Box (8x6x4)",
-      quantity: 300,
-      totalAmount: 7620,
-      paymentStatus: "SUCCESS",
-      fulfillmentStatus: "SHIPPED",
-    },
-    {
-      id: "ord-103",
-      orderNumber: "#BX-1046",
-      customerName: "Vikram Malhotra",
-      customerEmail: "vikram@malhotratech.com",
-      date: "Today, 11:45 AM",
-      itemsSummary: "Shipping Box 10x8x6",
-      quantity: 100,
-      totalAmount: 2450,
-      paymentStatus: "PENDING",
-      fulfillmentStatus: "PROCESSING",
-    },
-    {
-      id: "ord-104",
-      orderNumber: "#BX-1045",
-      customerName: "Sneha Patel",
-      customerEmail: "sneha.couture@gmail.com",
-      date: "Yesterday",
-      itemsSummary: "Premium White Mailer Box",
-      quantity: 500,
-      totalAmount: 6900,
-      paymentStatus: "SUCCESS",
-      fulfillmentStatus: "DELIVERED",
-    },
-  ];
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await getAdminDashboardMetricsAction();
+        if (res.success && res.data && res.data.recentOrders) {
+          setOrders(res.data.recentOrders);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard recent orders:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   return (
     <div
@@ -113,76 +69,76 @@ export function RecentOrdersTable() {
             </tr>
           </thead>
           <tbody style={{ fontSize: "12px" }}>
-            {recentOrders.map((order, i) => (
-              <tr
-                key={order.id}
-                style={{
-                  borderBottom: i === recentOrders.length - 1 ? "none" : "1px solid #EDE3D4",
-                  background: "#FFFFFF",
-                }}
-              >
-                <td style={{ padding: "14px 20px" }}>
-                  <div style={{ fontWeight: 700, color: "#5C3A22" }}>{order.orderNumber}</div>
-                  <div style={{ fontSize: "10px", color: "#8E8880", marginTop: "2px" }}>{order.date}</div>
-                </td>
-                <td style={{ padding: "14px 20px" }}>
-                  <div style={{ fontWeight: 600, color: "#2B2B2B" }}>{order.customerName}</div>
-                  <div style={{ fontSize: "11px", color: "#8E8880" }}>{order.customerEmail}</div>
-                </td>
-                <td style={{ padding: "14px 20px" }}>
-                  <div style={{ color: "#2B2B2B", fontWeight: 500 }}>{order.itemsSummary}</div>
-                  <div style={{ fontSize: "10px", color: "#8E8880" }}>Qty: {order.quantity} pcs</div>
-                </td>
-                <td style={{ padding: "14px 20px", fontWeight: 800, color: "#2B2B2B" }}>
-                  ₹{order.totalAmount.toLocaleString("en-IN")}
-                </td>
-                <td style={{ padding: "14px 20px" }}>
-                  {order.paymentStatus === "SUCCESS" ? (
-                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
-                      ● Paid
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: "#FFFBEB", color: "#D97706", border: "1px solid #FDE68A" }}>
-                      ● Pending
-                    </span>
-                  )}
-                </td>
-                <td style={{ padding: "14px 20px" }}>
-                  {order.fulfillmentStatus === "DELIVERED" && (
-                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", background: "#F7F2EC", color: "#4A4A4A" }}>
-                      Delivered
-                    </span>
-                  )}
-                  {order.fulfillmentStatus === "SHIPPED" && (
-                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", background: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE" }}>
-                      Shipped
-                    </span>
-                  )}
-                  {order.fulfillmentStatus === "PROCESSING" && (
-                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", background: "#FDF4EB", color: "#5C3A22", border: "1px solid #EDE3D4" }}>
-                      Processing
-                    </span>
-                  )}
-                </td>
-                <td style={{ padding: "14px 20px", textAlign: "right" }}>
-                  <Link
-                    href="/admin/orders"
-                    style={{
-                      padding: "4px 10px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: "#5C3A22",
-                      background: "#F7F2EC",
-                      borderRadius: "6px",
-                      border: "1px solid #EDE3D4",
-                      textDecoration: "none",
-                    }}
-                  >
-                    Manage
-                  </Link>
+            {orders.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "#8E8880" }}>
+                  No recent orders in database.
                 </td>
               </tr>
-            ))}
+            ) : (
+              orders.map((order) => (
+                <tr
+                  key={order.id}
+                  style={{
+                    borderBottom: "1px solid #EDE3D4",
+                    background: "#FFFFFF",
+                  }}
+                >
+                  <td style={{ padding: "14px 20px" }}>
+                    <div style={{ fontWeight: 700, color: "#5C3A22" }}>{order.orderNumber}</div>
+                    <div style={{ fontSize: "10px", color: "#8E8880", marginTop: "2px" }}>
+                      {new Date(order.createdAt).toLocaleDateString("en-IN")}
+                    </div>
+                  </td>
+                  <td style={{ padding: "14px 20px" }}>
+                    <div style={{ fontWeight: 600, color: "#2B2B2B" }}>{order.customerName}</div>
+                    <div style={{ fontSize: "11px", color: "#8E8880" }}>{order.customerEmail}</div>
+                  </td>
+                  <td style={{ padding: "14px 20px" }}>
+                    <div style={{ color: "#2B2B2B", fontWeight: 500 }}>
+                      {order.items?.[0]?.productName || "Packaging Order"}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#8E8880" }}>Qty: {order.itemsCount} pcs</div>
+                  </td>
+                  <td style={{ padding: "14px 20px", fontWeight: 800, color: "#2B2B2B" }}>
+                    ₹{(order.totalRupees ?? 0).toLocaleString("en-IN")}
+                  </td>
+                  <td style={{ padding: "14px 20px" }}>
+                    {order.paymentStatus === "SUCCESS" ? (
+                      <span style={{ fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
+                        ● Paid
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: "#FFFBEB", color: "#D97706", border: "1px solid #FDE68A" }}>
+                        ● {order.paymentStatus}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ padding: "14px 20px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "6px", background: "#FDF4EB", color: "#5C3A22", border: "1px solid #EDE3D4" }}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: "14px 20px", textAlign: "right" }}>
+                    <Link
+                      href="/admin/orders"
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "#5C3A22",
+                        background: "#F7F2EC",
+                        borderRadius: "6px",
+                        border: "1px solid #EDE3D4",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Manage
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

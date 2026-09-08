@@ -1,11 +1,11 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+import React from "react";
+import { BannersManager } from "@/components/admin/banners/banners-manager";
+
+export const metadata = {
+  title: "Banners & Promotions | BoxCare Admin",
+  description: "Manage hero carousels, offer strips, category promotional spots, and promo popups.",
+};
 
 export default function AdminBannersPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer B"
-      title="Admin Banners"
-      description="Offer strip, home banners, category promotions, featured sections, and active/inactive controls."
-    />
-  );
+  return <BannersManager />;
 }

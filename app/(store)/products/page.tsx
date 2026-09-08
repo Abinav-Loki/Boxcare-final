@@ -4,15 +4,31 @@ import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { PRODUCTS, Product } from "@/lib/products-data";
 import { useCart } from "@/components/store/cart-context";
+import { getAdminProductsAction } from "@/app/actions/admin-products";
 
 export default function ProductsPage() {
   const { addToCart, setIsCartOpen, toggleWishlist, isInWishlist } = useCart();
+  const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLengths, setSelectedLengths] = useState<number[]>([]);
   const [selectedWidths, setSelectedWidths] = useState<number[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(15000);
   const [sortBy, setSortBy] = useState<string>("default");
+
+  useEffect(() => {
+    async function loadDb() {
+      try {
+        const res = await getAdminProductsAction();
+        if (res.success && res.data && res.data.length > 0) {
+          setProductsList(res.data as any);
+        }
+      } catch (err) {
+        console.error("Failed to load products:", err);
+      }
+    }
+    loadDb();
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -38,7 +54,11 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return productsList.filter((product) => {
+      // Hide inactive products from storefront
+      if (product.availability === "Out of Stock" || (product as any).status === "INACTIVE") {
+        return false;
+      }
       // Category filter
       if (selectedCategory !== "all" && product.categorySlug !== selectedCategory) {
         return false;
@@ -440,7 +460,7 @@ export default function ProductsPage() {
               >
                 <div>
                   <span id="catalog-results-count" style={{ fontSize: "0.88rem", color: "#78736E", fontWeight: 500 }}>
-                    Showing {filteredProducts.length} of {PRODUCTS.length} results
+                    Showing {filteredProducts.length} of {productsList.length} results
                   </span>
                 </div>
 

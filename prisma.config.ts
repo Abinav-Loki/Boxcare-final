@@ -1,8 +1,15 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { defineConfig } from "prisma/config";
 
-const databaseUrl =
-  process.env.DATABASE_URL ?? "postgresql://postgres:pg67root@localhost:5432/boxcare?schema=public";
+// Load .env.local first if present, then fall back to .env
+dotenv.config({ path: ".env.local" });
+dotenv.config();
+
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not defined in environment variables or .env/.env.local file");
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

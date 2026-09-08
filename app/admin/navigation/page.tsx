@@ -1,11 +1,11 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+import React from "react";
+import { NavigationManager } from "@/components/admin/navigation/navigation-manager";
+
+export const metadata = {
+  title: "Navigation Manager | BoxCare Admin",
+  description: "Manage BoxCare storefront navigation links, megamenu dropdowns, mobile drawer, and footer columns.",
+};
 
 export default function AdminNavigationPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer B"
-      title="Dynamic Navigation Manager"
-      description="Admin-controlled header, footer, category, mobile, and featured navigation menus."
-    />
-  );
+  return <NavigationManager />;
 }

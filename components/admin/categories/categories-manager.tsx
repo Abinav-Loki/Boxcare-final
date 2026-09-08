@@ -1,16 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminCategory, INITIAL_STOREFRONT_CATEGORIES } from "./category-types";
 import { CategoryProductsView } from "./category-products-view";
+import { ImageUploadField } from "@/components/admin/common/image-upload-field";
+import {
+  getAdminCategoriesAction,
+  createAdminCategoryAction,
+  updateAdminCategoryAction,
+  deleteAdminCategoryAction,
+  toggleCategoryActiveAction,
+} from "@/app/actions/admin-categories";
+
+import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
 
 interface CategoriesManagerProps {
   initialSelectedSlug?: string;
 }
 
 export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProps) {
+  const { confirmAction, ConfirmDialog } = useAdminConfirm();
   const [categories, setCategories] = useState<AdminCategory[]>(INITIAL_STOREFRONT_CATEGORIES);
+  const [isLoading, setIsLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<AdminCategory | null>(() => {
     if (initialSelectedSlug) {
       return INITIAL_STOREFRONT_CATEGORIES.find((c) => c.slug === initialSelectedSlug) || null;
@@ -25,6 +38,7 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -36,7 +50,32 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     status: "ACTIVE" as "ACTIVE" | "INACTIVE",
     stockStatus: "IN_STOCK" as "IN_STOCK" | "OUT_OF_STOCK",
     featured: false,
+    offerBadge: "",
+    offerText: "",
   });
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const loadCategories = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminCategoriesAction();
+      if (res.success && res.data && res.data.length > 0) {
+        setCategories(res.data as any);
+      }
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   const availableImages = [
     { label: "Mailer Boxes", url: "/images/mailer-boxes.png" },
@@ -53,27 +92,68 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
 
   const handleDeleteCategory = (id: string, name: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (confirm(`Are you sure you want to delete the category "${name}"? This action cannot be undone.`)) {
-      setCategories((prev) => prev.filter((c) => c.id !== id));
-      if (selectedCategory && selectedCategory.id === id) {
-        setSelectedCategory(null);
-      }
-      setIsModalOpen(false);
-    }
+    confirmAction({
+      title: `Delete Category: ${name}`,
+      message: "This action cannot be undone. Are you sure you want to delete this?",
+      description: `Category: ${name} (ID: ${id})`,
+      isDestructive: true,
+      confirmLabel: "Continue to Delete",
+      onConfirm: async () => {
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        if (selectedCategory && selectedCategory.id === id) {
+          setSelectedCategory(null);
+        }
+        setIsModalOpen(false);
+
+        const res = await deleteAdminCategoryAction(id);
+        if (res.success) {
+          if ((res as any).softDeleted) {
+            showToast(`🛡️ Category "${name}" contains products, so it was safely deactivated.`);
+          } else {
+            showToast(`🗑️ Category "${name}" was permanently removed.`);
+          }
+          loadCategories();
+        } else {
+          showToast(`⚠️ ${(res as any).error || "Failed to delete category"}`);
+          loadCategories();
+        }
+      },
+    });
   };
 
   const handleToggleStockStatus = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              stockStatus: c.stockStatus === "IN_STOCK" ? "OUT_OF_STOCK" : "IN_STOCK",
-            }
-          : c
-      )
-    );
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) return;
+
+    const newActive = cat.status !== "ACTIVE";
+    confirmAction({
+      title: "Toggle Category Status",
+      message: "Are you sure you want to do this?",
+      description: `Change "${cat.name}" status to ${newActive ? "Active (Visible)" : "Inactive (Hidden)"}.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setCategories((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  status: newActive ? "ACTIVE" : "INACTIVE",
+                  stockStatus: newActive ? "IN_STOCK" : "OUT_OF_STOCK",
+                }
+              : c
+          )
+        );
+
+        const res = await toggleCategoryActiveAction(id, newActive);
+        if (!res.success) {
+          showToast(`⚠️ Sync notice: ${res.error}`);
+          loadCategories();
+        } else {
+          showToast(`Category "${cat.name}" is now ${newActive ? "Active" : "Inactive"}`);
+        }
+      },
+    });
   };
 
   // If a category is clicked/selected, render the CategoryProductsView
@@ -81,7 +161,10 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     return (
       <CategoryProductsView
         category={selectedCategory}
-        onBack={() => setSelectedCategory(null)}
+        onBack={() => {
+          setSelectedCategory(null);
+          loadCategories();
+        }}
         onDeleteCategory={(catId, catName) => handleDeleteCategory(catId, catName)}
       />
     );
@@ -110,6 +193,8 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
       status: "ACTIVE",
       stockStatus: "IN_STOCK",
       featured: false,
+      offerBadge: "",
+      offerText: "",
     });
     setIsModalOpen(true);
   };
@@ -126,6 +211,8 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
       status: cat.status,
       stockStatus: cat.stockStatus || "IN_STOCK",
       featured: cat.featured,
+      offerBadge: cat.offerBadge || "",
+      offerText: cat.offerText || "",
     });
     setIsModalOpen(true);
   };
@@ -147,35 +234,53 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    if (editingCategory) {
-      // Update existing
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === editingCategory.id
-            ? {
-                ...c,
-                ...formData,
-              }
-            : c
-        )
-      );
-    } else {
-      // Add new
-      const newCat: AdminCategory = {
-        id: `cat-${Date.now()}`,
-        name: formData.name,
-        slug: formData.slug || "new-category",
-        image: formData.image,
-        description: formData.description || "Packaging catalog category.",
-        productCount: 0,
-        sortOrder: Number(formData.sortOrder) || categories.length + 1,
-        status: formData.status,
-        stockStatus: formData.stockStatus,
-        featured: formData.featured,
-      };
-      setCategories((prev) => [newCat, ...prev]);
-    }
-    setIsModalOpen(false);
+    const generatedSlug = formData.slug.trim() ||
+      formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+
+    const payload = {
+      name: formData.name.trim(),
+      slug: generatedSlug,
+      imageUrl: formData.image,
+      description: formData.description.trim(),
+      sortOrder: Number(formData.sortOrder) || 1,
+      isActive: formData.status === "ACTIVE",
+      isFeatured: Boolean(formData.featured),
+      seoTitle: formData.offerBadge ? `OFFER:${formData.offerBadge}|${formData.offerText || ""}` : undefined,
+    };
+
+    confirmAction({
+      title: editingCategory ? `Update Category: ${formData.name}` : `Create Category: ${formData.name}`,
+      message: "Are you sure you want to do this?",
+      description: `Commit ${editingCategory ? "updates" : "new category creation"} for "${formData.name}" to the database.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        try {
+          if (editingCategory) {
+            const res = await updateAdminCategoryAction(editingCategory.id, payload);
+            if (res.success && res.data) {
+              showToast(`✓ Updated category "${formData.name}" in database`);
+              loadCategories();
+            } else {
+              showToast(`⚠️ ${res.error || "Failed to update category"}`);
+            }
+          } else {
+            const res = await createAdminCategoryAction(payload);
+            if (res.success && res.data) {
+              showToast(`🎉 Created category "${formData.name}" in database`);
+              loadCategories();
+            } else {
+              showToast(`⚠️ ${res.error || "Failed to create category"}`);
+            }
+          }
+        } catch (err: any) {
+          showToast(`⚠️ Error: ${err.message || "Failed to save category"}`);
+        } finally {
+          setIsSubmitting(false);
+          setIsModalOpen(false);
+        }
+      },
+    });
   };
 
   const handleToggleStatus = (id: string, e: React.MouseEvent) => {
@@ -407,6 +512,22 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
                       {isOutOfStock ? "Out of Stock" : "In Stock"}
                     </span>
                   </div>
+
+                  {cat.offerBadge && (
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 800,
+                        padding: "2px 8px",
+                        borderRadius: "6px",
+                        background: "linear-gradient(135deg, #DC2626, #EA580C)",
+                        color: "#FFFFFF",
+                        boxShadow: "0 2px 6px rgba(220, 38, 38, 0.25)",
+                      }}
+                    >
+                      {cat.offerBadge}
+                    </span>
+                  )}
 
                   {cat.featured && (
                     <span
@@ -688,17 +809,25 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
               background: "#FFFFFF",
               borderRadius: "18px",
               border: "1px solid #EDE3D4",
-              maxWidth: "520px",
+              maxWidth: "540px",
               width: "100%",
-              padding: "24px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
               boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", borderBottom: "1px solid #EDE3D4", paddingBottom: "12px" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#2B2B2B", margin: 0 }}>
-                {editingCategory ? "Edit Category" : "Add Storefront Category"}
-              </h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #EDE3D4", flexShrink: 0 }}>
+              <div>
+                <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#2B2B2B", margin: 0 }}>
+                  {editingCategory ? "Edit Category" : "Add Storefront Category"}
+                </h2>
+                <p style={{ fontSize: "11px", color: "#8E8880", margin: "2px 0 0 0" }}>
+                  {editingCategory ? `Modify settings and promotional offers for ${editingCategory.name}` : "Configure category details and display rules"}
+                </p>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
                 style={{ background: "transparent", border: "none", fontSize: "18px", color: "#8E8880", cursor: "pointer" }}
@@ -707,7 +836,7 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
               </button>
             </div>
 
-            <form onSubmit={handleSaveCategory} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <form onSubmit={handleSaveCategory} style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "20px 24px", overflowY: "auto", flex: 1 }}>
               {/* Name */}
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
@@ -757,36 +886,15 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
                 />
               </div>
 
-              {/* Storefront Image Asset Selection */}
+              {/* Storefront Image Asset Selection / Upload */}
               <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                  Storefront Box Image Asset
-                </label>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  <select
-                    value={formData.image}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, image: e.target.value }))}
-                    style={{
-                      flex: 1,
-                      background: "#F7F2EC",
-                      border: "1px solid #EDE3D4",
-                      borderRadius: "8px",
-                      padding: "8px 10px",
-                      fontSize: "12px",
-                      color: "#2B2B2B",
-                      outline: "none",
-                    }}
-                  >
-                    {availableImages.map((img) => (
-                      <option key={img.url} value={img.url}>
-                        {img.label} ({img.url})
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "#F7F2EC", border: "1px solid #EDE3D4", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px" }}>
-                    <img src={formData.image} alt="Preview" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
-                  </div>
-                </div>
+                <ImageUploadField
+                  label="Category Box Image / Asset"
+                  value={formData.image}
+                  onChange={(newUrl) => setFormData((prev) => ({ ...prev, image: newUrl }))}
+                  presetImages={availableImages}
+                  helperText="Upload PNG, JPG, WEBP box photo or select from BoxCare preset assets."
+                />
               </div>
 
               {/* Description */}
@@ -811,6 +919,94 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
                     resize: "none",
                   }}
                 />
+              </div>
+
+              {/* Promotional Offer & Discount Badge */}
+              <div style={{ background: "#FAF7F2", border: "1px solid #EDE3D4", borderRadius: "10px", padding: "12px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 800, color: "#5C3A22", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <span>🎁 Apply Category Promotional Offer</span>
+                  </label>
+                  {formData.offerBadge && (
+                    <span style={{ fontSize: "10px", fontWeight: 800, background: "linear-gradient(135deg, #DC2626, #EA580C)", color: "#FFFFFF", padding: "2px 8px", borderRadius: "6px" }}>
+                      Preview: {formData.offerBadge}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                  {[
+                    { badge: "⚡ 10% OFF", text: "Flat 10% discount across category" },
+                    { badge: "🔥 FLAT 15% OFF", text: "15% off wholesale bulk orders" },
+                    { badge: "🎉 UP TO 20% OFF", text: "Special volume tier pricing" },
+                    { badge: "📦 BULK WHOLESALE", text: "Extra 10% on orders above 500 pcs" },
+                    { badge: "🏷️ FESTIVE DEAL", text: "Limited-time seasonal packaging discount" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.badge}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, offerBadge: preset.badge, offerText: preset.text }))}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        borderRadius: "6px",
+                        background: formData.offerBadge === preset.badge ? "#5C3A22" : "#FFFFFF",
+                        color: formData.offerBadge === preset.badge ? "#FFFFFF" : "#5C3A22",
+                        border: "1px solid #D1C7BD",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {preset.badge}
+                    </button>
+                  ))}
+                  {formData.offerBadge && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, offerBadge: "", offerText: "" }))}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        borderRadius: "6px",
+                        background: "#FEE2E2",
+                        color: "#DC2626",
+                        border: "1px solid #FECACA",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕ Clear Offer
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "10px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6B6B", marginBottom: "3px" }}>
+                      Offer Badge Tag
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 🔥 FLAT 15% OFF"
+                      value={formData.offerBadge}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, offerBadge: e.target.value }))}
+                      style={{ width: "100%", background: "#FFFFFF", border: "1px solid #EDE3D4", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6B6B", marginBottom: "3px" }}>
+                      Offer Subtitle / Promotion Note
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Use code BOXCARE10 at checkout"
+                      value={formData.offerText}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, offerText: e.target.value }))}
+                      style={{ width: "100%", background: "#FFFFFF", border: "1px solid #EDE3D4", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Stock Status & Visibility */}
@@ -863,7 +1059,22 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
               </div>
 
               {/* Form Buttons */}
-              <div style={{ display: "flex", justifyContent: editingCategory ? "space-between" : "flex-end", alignItems: "center", gap: "10px", marginTop: "12px", paddingTop: "14px", borderTop: "1px solid #EDE3D4" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: editingCategory ? "space-between" : "flex-end",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginTop: "16px",
+                  paddingTop: "14px",
+                  borderTop: "1px solid #EDE3D4",
+                  position: "sticky",
+                  bottom: "-20px",
+                  background: "#FFFFFF",
+                  paddingBottom: "4px",
+                  zIndex: 10,
+                }}
+              >
                 {editingCategory && (
                   <button
                     type="button"
@@ -922,6 +1133,7 @@ export function CategoriesManager({ initialSelectedSlug }: CategoriesManagerProp
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

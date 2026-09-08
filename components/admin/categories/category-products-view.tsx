@@ -1,9 +1,19 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { AdminCategory } from "./category-types";
 import { PRODUCTS, Product, getUnitPrice } from "@/lib/products-data";
+import { ImageUploadField } from "@/components/admin/common/image-upload-field";
+import {
+  getAdminProductsAction,
+  createAdminProductAction,
+  updateAdminProductAction,
+  deleteAdminProductAction,
+  toggleProductStatusAction,
+} from "@/app/actions/admin-products";
+
+import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
 
 interface CategoryProductsViewProps {
   category: AdminCategory;
@@ -12,6 +22,8 @@ interface CategoryProductsViewProps {
 }
 
 export function CategoryProductsView({ category, onBack, onDeleteCategory }: CategoryProductsViewProps) {
+  const { confirmAction, ConfirmDialog } = useAdminConfirm();
+
   // Initialize matching products list in state
   const [productsList, setProductsList] = useState<Product[]>(() => {
     return PRODUCTS.filter((p) => {
@@ -22,13 +34,17 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
     });
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [stockFilter, setStockFilter] = useState<"ALL" | "IN_STOCK" | "OUT_OF_STOCK">("ALL");
+  const [filterTab, setFilterTab] = useState<"ALL" | "VISIBLE" | "HIDDEN" | "IN_STOCK" | "OUT_OF_STOCK">("ALL");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   // Modal State
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [productForm, setProductForm] = useState({
@@ -46,9 +62,36 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
     price300: 1300,
     price500: 2450,
     availability: "In Stock",
+    status: "ACTIVE" as "ACTIVE" | "INACTIVE",
     rating: 5.0,
     reviewsCount: 24,
+    offerBadge: "",
+    offerDiscountPercent: 0,
+    offerCouponCode: "",
   });
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminProductsAction({ categorySlug: category.slug });
+      if (res.success && res.data && res.data.length > 0) {
+        setProductsList(res.data as any);
+      }
+    } catch (err) {
+      console.error("Failed to load category products:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, [category.slug]);
 
   const availableProductImages = [
     { label: "Mailer Box 4x4x1.5", url: "/images/box_4_4_1_5.png" },
@@ -67,7 +110,7 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
     { label: "Courier Bag", url: "/images/courier-bags.png" },
   ];
 
-  // Filter products by search & stock status
+  // Filter products by search & visibility / stock status
   const filteredProducts = useMemo(() => {
     return productsList.filter((p) => {
       const q = searchQuery.toLowerCase().trim();
@@ -77,12 +120,20 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
         p.slug.toLowerCase().includes(q) ||
         (p.size_inches && p.size_inches.toLowerCase().includes(q));
 
+      const isHidden = p.status === "INACTIVE" || p.isHidden === true;
       const isOut = p.availability === "Out of Stock";
-      if (stockFilter === "IN_STOCK") return matchesSearch && !isOut;
-      if (stockFilter === "OUT_OF_STOCK") return matchesSearch && isOut;
+
+      if (filterTab === "VISIBLE") return matchesSearch && !isHidden;
+      if (filterTab === "HIDDEN") return matchesSearch && isHidden;
+      if (filterTab === "IN_STOCK") return matchesSearch && !isOut && !isHidden;
+      if (filterTab === "OUT_OF_STOCK") return matchesSearch && isOut;
       return matchesSearch;
     });
-  }, [productsList, searchQuery, stockFilter]);
+  }, [productsList, searchQuery, filterTab]);
+
+  // Counts for quick filter pills
+  const visibleCount = useMemo(() => productsList.filter((p) => p.status !== "INACTIVE" && !p.isHidden).length, [productsList]);
+  const hiddenCount = useMemo(() => productsList.filter((p) => p.status === "INACTIVE" || p.isHidden).length, [productsList]);
 
   // Open Modal for New Product
   const handleOpenAddProduct = () => {
@@ -104,8 +155,12 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
       price300: 1300,
       price500: 2450,
       availability: "In Stock",
+      status: "ACTIVE",
       rating: 5.0,
       reviewsCount: 18,
+      offerBadge: "",
+      offerDiscountPercent: 0,
+      offerCouponCode: "",
     });
     setIsProductModalOpen(true);
   };
@@ -113,6 +168,7 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
   // Open Modal for Edit Product
   const handleOpenEditProduct = (prod: Product) => {
     setEditingProduct(prod);
+    const isHidden = prod.status === "INACTIVE" || prod.isHidden === true;
     setProductForm({
       name: prod.name,
       slug: prod.slug,
@@ -123,29 +179,91 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
       height_in: prod.height_in || 0,
       description: prod.description || "",
       image: prod.image || "/images/box_4_4_1_5.png",
-      price50: prod.prices["50"] || 0,
-      price100: prod.prices["100"] || 0,
-      price300: prod.prices["300"] || 0,
-      price500: prod.prices["500"] || 0,
+      price50: prod.prices?.["50"] || 250,
+      price100: prod.prices?.["100"] || 470,
+      price300: prod.prices?.["300"] || 1300,
+      price500: prod.prices?.["500"] || 2450,
       availability: prod.availability || "In Stock",
+      status: isHidden ? "INACTIVE" : "ACTIVE",
       rating: prod.rating || 5.0,
       reviewsCount: prod.reviewsCount || 10,
+      offerBadge: prod.offerBadge || "",
+      offerDiscountPercent: prod.offerDiscountPercent || 0,
+      offerCouponCode: "",
     });
     setIsProductModalOpen(true);
   };
 
+  // 1-Click Toggle Product Hide/Show (Storefront Visibility)
+  const handleToggleProductVisibility = (id: string) => {
+    const product = productsList.find((p) => p.id === id);
+    if (!product) return;
+
+    const isCurrentlyHidden = product.status === "INACTIVE" || product.isHidden === true;
+    const willBeVisible = isCurrentlyHidden;
+    const newDbStatus = willBeVisible ? "ACTIVE" : "INACTIVE";
+
+    confirmAction({
+      title: "Toggle Product Visibility",
+      message: "Are you sure you want to do this?",
+      description: `Change "${product.name}" status to ${willBeVisible ? "Visible in Storefront" : "Hidden from Storefront"}.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setProductsList((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status: newDbStatus,
+                  isHidden: !willBeVisible,
+                }
+              : p
+          )
+        );
+
+        const res = await toggleProductStatusAction(id, newDbStatus);
+        if (!res.success) {
+          showToast(`⚠️ Sync note: ${res.error}`);
+          loadProducts();
+        } else {
+          showToast(
+            willBeVisible
+              ? `👁️ "${product.name}" is now VISIBLE on Storefront`
+              : `🚫 "${product.name}" is now HIDDEN from Storefront`
+          );
+        }
+      },
+    });
+  };
+
   // 1-Click Toggle Product Stock Status
   const handleToggleProductStock = (id: string) => {
-    setProductsList((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              availability: p.availability === "Out of Stock" ? "In Stock" : "Out of Stock",
-            }
-          : p
-      )
-    );
+    const product = productsList.find((p) => p.id === id);
+    if (!product) return;
+
+    const willBeInStock = product.availability === "Out of Stock";
+    const newStatus = willBeInStock ? "In Stock" : "Out of Stock";
+    const dbStatus = willBeInStock ? "ACTIVE" : "INACTIVE";
+
+    confirmAction({
+      title: "Toggle Product Stock Status",
+      message: "Are you sure you want to do this?",
+      description: `Set "${product.name}" availability to "${newStatus}".`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setProductsList((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, availability: newStatus } : p))
+        );
+
+        const res = await toggleProductStatusAction(id, dbStatus);
+        if (!res.success) {
+          showToast(`⚠️ Sync note: ${res.error}`);
+          loadProducts();
+        } else {
+          showToast(`"${product.name}" is now ${newStatus === "In Stock" ? "In Stock 📦" : "Out of Stock 🛑"}`);
+        }
+      },
+    });
   };
 
   // Auto update slug on name change
@@ -167,77 +285,93 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
     e.preventDefault();
     if (!productForm.name.trim()) return;
 
-    if (editingProduct) {
-      // Update
-      setProductsList((prev) =>
-        prev.map((p) =>
-          p.id === editingProduct.id
-            ? {
-                ...p,
-                name: productForm.name,
-                slug: productForm.slug,
-                size_inches: productForm.size_inches,
-                size_inches_short: productForm.size_inches_short,
-                length_in: Number(productForm.length_in),
-                width_in: Number(productForm.width_in),
-                height_in: Number(productForm.height_in),
-                description: productForm.description,
-                image: productForm.image,
-                availability: productForm.availability,
-                prices: {
-                  ...p.prices,
-                  "50": Number(productForm.price50),
-                  "100": Number(productForm.price100),
-                  "300": Number(productForm.price300),
-                  "500": Number(productForm.price500),
-                },
-              }
-            : p
-        )
-      );
-    } else {
-      // Add new
-      const newProduct: Product = {
-        id: `prod-${Date.now()}`,
-        name: productForm.name,
-        slug: productForm.slug || `product-${Date.now()}`,
-        category: category.name,
-        categorySlug: category.slug,
-        categoryId: category.slug,
-        size_inches: productForm.size_inches,
-        size_inches_short: productForm.size_inches_short,
-        size_cm: `${(Number(productForm.length_in) * 2.54).toFixed(1)} cm x ${(Number(productForm.width_in) * 2.54).toFixed(1)} cm x ${(Number(productForm.height_in) * 2.54).toFixed(1)} cm`,
-        length_in: Number(productForm.length_in),
-        width_in: Number(productForm.width_in),
-        height_in: Number(productForm.height_in),
-        length_cm: Number(productForm.length_in) * 2.54,
-        width_cm: Number(productForm.width_in) * 2.54,
-        height_cm: Number(productForm.height_in) * 2.54,
-        description: productForm.description,
-        features: ["Self-Locking Flaps", "High-Grade E-Flute", "Eco-Friendly Kraft"],
-        prices: {
-          "50": Number(productForm.price50),
-          "100": Number(productForm.price100),
-          "300": Number(productForm.price300),
-          "500": Number(productForm.price500),
-        },
-        contact_number: "+91 89039 27262",
-        availability: productForm.availability,
-        image: productForm.image,
-        specifications: { "Box Type": category.name, "Material": "Corrugated Cardboard" },
-        rating: 5.0,
-        reviewsCount: 1,
-        isPopular: true,
-      };
-      setProductsList((prev) => [newProduct, ...prev]);
-    }
-    setIsProductModalOpen(false);
+    const shortSize = `${productForm.length_in}x${productForm.width_in}x${productForm.height_in}`;
+    const fullSize = `${productForm.length_in} inch X ${productForm.width_in} inch X ${productForm.height_in} inch`;
+
+    const generatedSlug = productForm.slug.trim() ||
+      productForm.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    const payload = {
+      name: productForm.name.trim(),
+      slug: generatedSlug,
+      categoryId: category.slug,
+      description: productForm.description.trim(),
+      status: productForm.status,
+      imageUrl: productForm.image,
+      lengthIn: Number(productForm.length_in),
+      widthIn: Number(productForm.width_in),
+      heightIn: Number(productForm.height_in),
+      material: "Corrugated Cardboard",
+      price50: Number(productForm.price50),
+      price100: Number(productForm.price100),
+      price300: Number(productForm.price300),
+      price500: Number(productForm.price500),
+      stockQuantity: productForm.status === "ACTIVE" && productForm.availability === "In Stock" ? 100 : 0,
+      seoTitle: productForm.offerBadge
+        ? `OFFER:${productForm.offerBadge}|${productForm.offerDiscountPercent || ""}|${productForm.offerCouponCode || ""}`
+        : undefined,
+    };
+
+    confirmAction({
+      title: editingProduct ? `Update Product: ${productForm.name}` : `Add Product to ${category.name}`,
+      message: "Are you sure you want to do this?",
+      description: `Commit SKU details for "${productForm.name}" to the database.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        try {
+          if (editingProduct) {
+            const res = await updateAdminProductAction(editingProduct.id, payload);
+            if (res.success && res.data) {
+              showToast(`✓ Updated product "${productForm.name}" in database`);
+              loadProducts();
+            } else {
+              showToast(`⚠️ ${res.error || "Failed to update product"}`);
+            }
+          } else {
+            const res = await createAdminProductAction(payload);
+            if (res.success && res.data) {
+              showToast(`🎉 Created product "${productForm.name}" in database`);
+              loadProducts();
+            } else {
+              showToast(`⚠️ ${res.error || "Failed to create product"}`);
+            }
+          }
+        } catch (err: any) {
+          showToast(`⚠️ Error: ${err.message || "Failed to save product"}`);
+        } finally {
+          setIsSubmitting(false);
+          setIsProductModalOpen(false);
+        }
+      },
+    });
   };
 
   const handleDeleteProduct = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to remove "${name}" from ${category.name}?`)) {
-      setProductsList((prev) => prev.filter((p) => p.id !== id));
-    }
+    confirmAction({
+      title: `Delete Product: ${name}`,
+      message: "This action cannot be undone. Are you sure you want to delete this?",
+      description: `Product SKU: ${name} (ID: ${id})`,
+      isDestructive: true,
+      confirmLabel: "Continue to Delete",
+      onConfirm: async () => {
+        setProductsList((prev) => prev.filter((p) => p.id !== id));
+        showToast(`🗑️ Deleting "${name}"...`);
+
+        const res = await deleteAdminProductAction(id);
+        if (res.success) {
+          if ((res as any).softDeleted) {
+            showToast(`🛡️ "${name}" was safely deactivated (has order history).`);
+          } else {
+            showToast(`🗑️ "${name}" permanently removed.`);
+          }
+          loadProducts();
+        } else {
+          showToast(`⚠️ ${(res as any).error || "Failed to delete product"}`);
+          loadProducts();
+        }
+      },
+    });
   };
 
   return (
@@ -435,17 +569,19 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
           </svg>
         </div>
 
-        {/* Stock Filter & View Mode */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ display: "flex", background: "#F7F2EC", padding: "3px", borderRadius: "8px", border: "1px solid #EDE3D4", gap: "2px" }}>
+        {/* Stock / Visibility Filter & View Mode */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", background: "#F7F2EC", padding: "3px", borderRadius: "8px", border: "1px solid #EDE3D4", gap: "2px", flexWrap: "wrap" }}>
             {[
-              { id: "ALL", label: "All SKUs" },
+              { id: "ALL", label: `All (${productsList.length})` },
+              { id: "VISIBLE", label: `👁️ Visible (${visibleCount})` },
+              { id: "HIDDEN", label: `🚫 Hidden (${hiddenCount})` },
               { id: "IN_STOCK", label: "In Stock" },
               { id: "OUT_OF_STOCK", label: "Out of Stock" },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setStockFilter(tab.id as any)}
+                onClick={() => setFilterTab(tab.id as any)}
                 style={{
                   padding: "4px 10px",
                   fontSize: "11px",
@@ -453,8 +589,8 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                   borderRadius: "6px",
                   border: "none",
                   cursor: "pointer",
-                  background: stockFilter === tab.id ? "#5C3A22" : "transparent",
-                  color: stockFilter === tab.id ? "#FFFFFF" : "#6B6B6B",
+                  background: filterTab === tab.id ? "#5C3A22" : "transparent",
+                  color: filterTab === tab.id ? "#FFFFFF" : "#6B6B6B",
                 }}
               >
                 {tab.label}
@@ -535,33 +671,35 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
             gap: "20px",
           }}
         >
           {filteredProducts.map((product) => {
             const minUnit = getUnitPrice(product, 500);
             const isProductOut = product.availability === "Out of Stock";
+            const isProductHidden = product.status === "INACTIVE" || product.isHidden === true;
+
             return (
               <div
                 key={product.id}
                 style={{
                   background: "#FFFFFF",
                   borderRadius: "16px",
-                  border: isProductOut ? "1px solid #FECACA" : "1px solid #EDE3D4",
+                  border: isProductHidden ? "1px dashed #F59E0B" : isProductOut ? "1px solid #FECACA" : "1px solid #EDE3D4",
                   overflow: "hidden",
                   boxShadow: "0 2px 8px rgba(43,43,43,0.04)",
                   display: "flex",
                   flexDirection: "column",
                   position: "relative",
-                  opacity: isProductOut ? 0.9 : 1,
+                  opacity: isProductHidden ? 0.85 : isProductOut ? 0.92 : 1,
                 }}
               >
-                {/* Product Card Top Status Header (Zero Overlap) */}
+                {/* Top Status Header */}
                 <div
                   style={{
                     padding: "8px 12px",
-                    background: "#FAF7F2",
+                    background: isProductHidden ? "#FFFBEB" : "#FAF7F2",
                     borderBottom: "1px solid #EDE3D4",
                     display: "flex",
                     justifyContent: "space-between",
@@ -582,31 +720,50 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                     {product.size_inches_short || product.size_inches || "Standard"}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      padding: "2px 7px",
-                      borderRadius: "6px",
-                      background: isProductOut ? "#FEE2E2" : "#ECFDF5",
-                      color: isProductOut ? "#DC2626" : "#059669",
-                      border: `1px solid ${isProductOut ? "#FECACA" : "#A7F3D0"}`,
-                    }}
-                  >
-                    {isProductOut ? "Out of Stock" : "In Stock"}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    {/* Visibility Badge */}
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: "6px",
+                        background: isProductHidden ? "#FEF3C7" : "#ECFDF5",
+                        color: isProductHidden ? "#D97706" : "#059669",
+                        border: `1px solid ${isProductHidden ? "#FDE68A" : "#A7F3D0"}`,
+                      }}
+                    >
+                      {isProductHidden ? "🚫 Hidden" : "👁️ Visible"}
+                    </span>
+
+                    {/* Stock Status Badge */}
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: "6px",
+                        background: isProductOut ? "#FEE2E2" : "#F3F4F6",
+                        color: isProductOut ? "#DC2626" : "#4B5563",
+                        border: `1px solid ${isProductOut ? "#FECACA" : "#E5E7EB"}`,
+                      }}
+                    >
+                      {isProductOut ? "Out of Stock" : "In Stock"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Clean Image Container */}
                 <div
                   style={{
                     height: "135px",
-                    background: isProductOut ? "#FEF2F2" : "#F7F2EC",
+                    background: isProductHidden ? "#FFFDF5" : isProductOut ? "#FEF2F2" : "#F7F2EC",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "12px",
                     borderBottom: "1px solid #EDE3D4",
+                    position: "relative",
                   }}
                 >
                   <img
@@ -616,18 +773,38 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                       maxHeight: "100%",
                       maxWidth: "80%",
                       objectFit: "contain",
-                      filter: isProductOut ? "grayscale(40%) drop-shadow(0 4px 8px rgba(0,0,0,0.08))" : "drop-shadow(0 4px 8px rgba(0,0,0,0.08))",
+                      filter: isProductHidden ? "grayscale(30%) opacity(0.85)" : isProductOut ? "grayscale(40%)" : "drop-shadow(0 4px 8px rgba(0,0,0,0.08))",
                     }}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://placehold.co/200x150/F7F2EC/5C3A22?text=Box";
                     }}
                   />
+                  {isProductHidden && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "6px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "rgba(217, 119, 6, 0.9)",
+                        color: "#FFFFFF",
+                        fontSize: "9px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        whiteSpace: "nowrap",
+                        backdropFilter: "blur(4px)",
+                      }}
+                    >
+                      Hidden from Storefront
+                    </div>
+                  )}
                 </div>
 
                 {/* Details */}
-                <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between" }}>
+                <div style={{ padding: "14px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between" }}>
                   <div>
-                    <h3 style={{ fontSize: "13px", fontWeight: 700, color: isProductOut ? "#6B6B6B" : "#2B2B2B", margin: "0 0 4px 0", lineHeight: 1.3 }}>
+                    <h3 style={{ fontSize: "13px", fontWeight: 700, color: isProductHidden ? "#8E8880" : isProductOut ? "#6B6B6B" : "#2B2B2B", margin: "0 0 4px 0", lineHeight: 1.3 }}>
                       {product.name}
                     </h3>
                     <div style={{ fontSize: "11px", color: "#8E8880", marginBottom: "8px" }}>
@@ -640,35 +817,63 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                         <span>50 pcs: ₹{product.prices["50"] || "-"}</span>
                         <span>500 pcs: ₹{product.prices["500"] || "-"}</span>
                       </div>
-                      <div style={{ fontSize: "10px", color: isProductOut ? "#DC2626" : "#059669", fontWeight: 700, marginTop: "2px" }}>
-                        {isProductOut ? "Unavailable for order" : `Starting from ₹${minUnit.toFixed(2)}/unit`}
+                      <div style={{ fontSize: "10px", color: isProductHidden ? "#D97706" : isProductOut ? "#DC2626" : "#059669", fontWeight: 700, marginTop: "2px" }}>
+                        {isProductHidden ? "🚫 Hidden from customer catalog" : isProductOut ? "Unavailable for order" : `Starting from ₹${minUnit.toFixed(2)}/unit`}
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions & 1-Click Stock Toggle */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #F7F2EC", paddingTop: "12px" }}>
-                    <button
-                      onClick={() => handleToggleProductStock(product.id)}
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        background: isProductOut ? "#ECFDF5" : "#FEF2F2",
-                        border: `1px solid ${isProductOut ? "#A7F3D0" : "#FECACA"}`,
-                        borderRadius: "6px",
-                        color: isProductOut ? "#059669" : "#DC2626",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {isProductOut ? "Make In Stock" : "Mark Out of Stock"}
-                    </button>
+                  {/* Actions: 1-Click Hide/Show & Stock Toggle & Edit */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid #F7F2EC", paddingTop: "10px" }}>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {/* Hide / Show Toggle Button */}
+                      <button
+                        onClick={() => handleToggleProductVisibility(product.id)}
+                        style={{
+                          flex: 1,
+                          padding: "5px 8px",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          background: isProductHidden ? "#ECFDF5" : "#FEF3C7",
+                          border: `1px solid ${isProductHidden ? "#A7F3D0" : "#FDE68A"}`,
+                          borderRadius: "6px",
+                          color: isProductHidden ? "#059669" : "#B45309",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                        title={isProductHidden ? "Click to Show on Storefront" : "Click to Hide from Storefront"}
+                      >
+                        <span>{isProductHidden ? "👁️ Show" : "🚫 Hide"}</span>
+                      </button>
+
+                      {/* Stock Toggle Button */}
+                      <button
+                        onClick={() => handleToggleProductStock(product.id)}
+                        style={{
+                          flex: 1,
+                          padding: "5px 8px",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          background: isProductOut ? "#ECFDF5" : "#FEF2F2",
+                          border: `1px solid ${isProductOut ? "#A7F3D0" : "#FECACA"}`,
+                          borderRadius: "6px",
+                          color: isProductOut ? "#059669" : "#DC2626",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isProductOut ? "Make In Stock" : "Mark Out of Stock"}
+                      </button>
+                    </div>
 
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button
                         onClick={() => handleOpenEditProduct(product)}
                         style={{
-                          padding: "4px 10px",
+                          flex: 1,
+                          padding: "5px 10px",
                           fontSize: "11px",
                           fontWeight: 600,
                           background: "#5C3A22",
@@ -678,12 +883,12 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                           cursor: "pointer",
                         }}
                       >
-                        Edit
+                        Edit SKU
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(product.id, product.name)}
                         style={{
-                          padding: "4px 8px",
+                          padding: "5px 10px",
                           fontSize: "11px",
                           fontWeight: 600,
                           background: "#FEE2E2",
@@ -718,45 +923,70 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ background: "#F7F2EC", borderBottom: "1px solid #EDE3D4", fontSize: "11px", fontWeight: 700, color: "#6B6B6B", textTransform: "uppercase" }}>
-                  <th style={{ padding: "12px 20px" }}>Image</th>
-                  <th style={{ padding: "12px 20px" }}>Product Name</th>
-                  <th style={{ padding: "12px 20px" }}>Size</th>
-                  <th style={{ padding: "12px 20px" }}>50 Pcs Price</th>
-                  <th style={{ padding: "12px 20px" }}>500 Pcs Price</th>
-                  <th style={{ padding: "12px 20px" }}>Stock Status</th>
-                  <th style={{ padding: "12px 20px", textAlign: "right" }}>Actions</th>
+                  <th style={{ padding: "12px 18px" }}>Image</th>
+                  <th style={{ padding: "12px 18px" }}>Product Name</th>
+                  <th style={{ padding: "12px 18px" }}>Size</th>
+                  <th style={{ padding: "12px 18px" }}>50 Pcs Price</th>
+                  <th style={{ padding: "12px 18px" }}>500 Pcs Price</th>
+                  <th style={{ padding: "12px 18px" }}>Visibility</th>
+                  <th style={{ padding: "12px 18px" }}>Stock Status</th>
+                  <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: "12px" }}>
                 {filteredProducts.map((product, i) => {
                   const isProductOut = product.availability === "Out of Stock";
+                  const isProductHidden = product.status === "INACTIVE" || product.isHidden === true;
+
                   return (
                     <tr
                       key={product.id}
                       style={{
                         borderBottom: i === filteredProducts.length - 1 ? "none" : "1px solid #EDE3D4",
-                        background: isProductOut ? "#FFFDFD" : "#FFFFFF",
+                        background: isProductHidden ? "#FFFDF5" : isProductOut ? "#FFFDFD" : "#FFFFFF",
                       }}
                     >
-                      <td style={{ padding: "12px 20px" }}>
+                      <td style={{ padding: "12px 18px" }}>
                         <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "#F7F2EC", border: "1px solid #EDE3D4", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <img src={product.image} alt={product.name} style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
                         </div>
                       </td>
-                      <td style={{ padding: "12px 20px" }}>
-                        <div style={{ fontWeight: 700, color: "#2B2B2B" }}>{product.name}</div>
+                      <td style={{ padding: "12px 18px" }}>
+                        <div style={{ fontWeight: 700, color: isProductHidden ? "#8E8880" : "#2B2B2B" }}>{product.name}</div>
                         <div style={{ fontSize: "10px", color: "#8E8880", fontFamily: "monospace" }}>{product.slug}</div>
                       </td>
-                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "#5C3A22" }}>
+                      <td style={{ padding: "12px 18px", fontWeight: 600, color: "#5C3A22" }}>
                         {product.size_inches}
                       </td>
-                      <td style={{ padding: "12px 20px", fontWeight: 700, color: "#2B2B2B" }}>
+                      <td style={{ padding: "12px 18px", fontWeight: 700, color: "#2B2B2B" }}>
                         ₹{product.prices["50"] || "-"}
                       </td>
-                      <td style={{ padding: "12px 20px", fontWeight: 700, color: "#059669" }}>
+                      <td style={{ padding: "12px 18px", fontWeight: 700, color: "#059669" }}>
                         ₹{product.prices["500"] || "-"}
                       </td>
-                      <td style={{ padding: "12px 20px" }}>
+                      <td style={{ padding: "12px 18px" }}>
+                        {/* 1-Click Hide/Show Toggle */}
+                        <button
+                          onClick={() => handleToggleProductVisibility(product.id)}
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: "6px",
+                            background: isProductHidden ? "#FEF3C7" : "#ECFDF5",
+                            color: isProductHidden ? "#D97706" : "#059669",
+                            border: `1px solid ${isProductHidden ? "#FDE68A" : "#A7F3D0"}`,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                          title={isProductHidden ? "Click to Show on Storefront" : "Click to Hide from Storefront"}
+                        >
+                          <span>{isProductHidden ? "🚫 Hidden" : "👁️ Visible"}</span>
+                        </button>
+                      </td>
+                      <td style={{ padding: "12px 18px" }}>
                         <button
                           onClick={() => handleToggleProductStock(product.id)}
                           style={{
@@ -764,16 +994,16 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                             fontWeight: 700,
                             padding: "3px 8px",
                             borderRadius: "6px",
-                            background: isProductOut ? "#FEE2E2" : "#ECFDF5",
-                            color: isProductOut ? "#DC2626" : "#059669",
-                            border: `1px solid ${isProductOut ? "#FECACA" : "#A7F3D0"}`,
+                            background: isProductOut ? "#FEE2E2" : "#F3F4F6",
+                            color: isProductOut ? "#DC2626" : "#4B5563",
+                            border: `1px solid ${isProductOut ? "#FECACA" : "#E5E7EB"}`,
                             cursor: "pointer",
                           }}
                         >
                           {isProductOut ? "Out of Stock" : "In Stock"}
                         </button>
                       </td>
-                      <td style={{ padding: "12px 20px", textAlign: "right" }}>
+                      <td style={{ padding: "12px 18px", textAlign: "right" }}>
                         <div style={{ display: "inline-flex", gap: "6px" }}>
                           <button
                             onClick={() => handleOpenEditProduct(product)}
@@ -840,13 +1070,15 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
               maxWidth: "560px",
               width: "100%",
               maxHeight: "90vh",
-              overflowY: "auto",
-              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
               boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", borderBottom: "1px solid #EDE3D4", paddingBottom: "12px" }}>
+            {/* Pinned Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #EDE3D4", flexShrink: 0 }}>
               <div>
                 <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#2B2B2B", margin: 0 }}>
                   {editingProduct ? `Edit ${editingProduct.name}` : `Add Product to ${category.name}`}
@@ -863,7 +1095,59 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {/* Scrollable Modal Form Body */}
+            <form onSubmit={handleSaveProduct} style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+              {/* Storefront Visibility (Show / Hide Option) */}
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "6px" }}>
+                  Storefront Visibility *
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setProductForm((prev) => ({ ...prev, status: "ACTIVE" }))}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: productForm.status === "ACTIVE" ? "2px solid #059669" : "1px solid #EDE3D4",
+                      background: productForm.status === "ACTIVE" ? "#ECFDF5" : "#FFFFFF",
+                      color: productForm.status === "ACTIVE" ? "#059669" : "#6B6B6B",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>👁️</span>
+                    <span>Show (Visible in Store)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductForm((prev) => ({ ...prev, status: "INACTIVE" }))}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: productForm.status === "INACTIVE" ? "2px solid #DC2626" : "1px solid #EDE3D4",
+                      background: productForm.status === "INACTIVE" ? "#FEF2F2" : "#FFFFFF",
+                      color: productForm.status === "INACTIVE" ? "#DC2626" : "#6B6B6B",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>🚫</span>
+                    <span>Hide (Hidden from Store)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Product Name */}
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
@@ -872,52 +1156,33 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 8 X 5 X 3 Inch Flap Mailer Box"
+                  placeholder="e.g. 6x4x2 Corrugated Mailer Box"
                   value={productForm.name}
                   onChange={handleProductNameChange}
-                  style={{
-                    width: "100%",
-                    background: "#F7F2EC",
-                    border: "1px solid #EDE3D4",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    fontSize: "12px",
-                    color: "#2B2B2B",
-                    outline: "none",
-                  }}
+                  style={{ width: "100%", background: "#F7F2EC", border: "1px solid #EDE3D4", borderRadius: "8px", padding: "8px 12px", fontSize: "12px", color: "#2B2B2B", outline: "none" }}
                 />
               </div>
 
               {/* Slug */}
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                  URL Slug (/product/...) *
+                  URL Slug *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="mailer-box-8x5x3"
+                  placeholder="e.g. 6x4x2-mailer-box"
                   value={productForm.slug}
                   onChange={(e) => setProductForm((prev) => ({ ...prev, slug: e.target.value }))}
-                  style={{
-                    width: "100%",
-                    background: "#F7F2EC",
-                    border: "1px solid #EDE3D4",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    fontSize: "12px",
-                    fontFamily: "monospace",
-                    color: "#5C3A22",
-                    outline: "none",
-                  }}
+                  style={{ width: "100%", background: "#F7F2EC", border: "1px solid #EDE3D4", borderRadius: "8px", padding: "8px 12px", fontSize: "12px", color: "#2B2B2B", fontFamily: "monospace", outline: "none" }}
                 />
               </div>
 
-              {/* Dimensions (Length, Width, Height) */}
+              {/* Dimensions */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                    Length (in)
+                    Length (in) *
                   </label>
                   <input
                     type="number"
@@ -937,7 +1202,7 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                    Width (in)
+                    Width (in) *
                   </label>
                   <input
                     type="number"
@@ -957,7 +1222,7 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                    Height (in)
+                    Height (in) *
                   </label>
                   <input
                     type="number"
@@ -977,36 +1242,130 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                 </div>
               </div>
 
-              {/* Product Box Image Selection */}
+              {/* Product Box Image Selection / Upload */}
               <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#4A4A4A", marginBottom: "4px" }}>
-                  Product Box Artwork Image
-                </label>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  <select
-                    value={productForm.image}
-                    onChange={(e) => setProductForm((prev) => ({ ...prev, image: e.target.value }))}
-                    style={{
-                      flex: 1,
-                      background: "#F7F2EC",
-                      border: "1px solid #EDE3D4",
-                      borderRadius: "8px",
-                      padding: "8px 10px",
-                      fontSize: "12px",
-                      color: "#2B2B2B",
-                      outline: "none",
-                    }}
-                  >
-                    {availableProductImages.map((img) => (
-                      <option key={img.url} value={img.url}>
-                        {img.label} ({img.url})
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "#F7F2EC", border: "1px solid #EDE3D4", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px" }}>
-                    <img src={productForm.image} alt="Preview" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
+                <ImageUploadField
+                  label="Product Box Artwork Image"
+                  value={productForm.image}
+                  onChange={(newUrl) => setProductForm((prev) => ({ ...prev, image: newUrl }))}
+                  presetImages={availableProductImages}
+                  helperText="Upload custom box artwork/photo or pick from BoxCare catalog assets."
+                />
+              </div>
+
+              {/* Promotional Offer & Discount Badge */}
+              <div style={{ background: "#FAF7F2", border: "1px solid #EDE3D4", borderRadius: "10px", padding: "12px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 800, color: "#5C3A22", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <span>🎁 Apply Product Promotional Offer & Discount</span>
+                  </label>
+                  {productForm.offerBadge && (
+                    <span style={{ fontSize: "10px", fontWeight: 800, background: "linear-gradient(135deg, #DC2626, #EA580C)", color: "#FFFFFF", padding: "2px 8px", borderRadius: "6px" }}>
+                      Active: {productForm.offerBadge}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                  {[
+                    { badge: "⚡ 10% OFF", percent: 10 },
+                    { badge: "🔥 15% OFF", percent: 15 },
+                    { badge: "🎉 20% OFF", percent: 20 },
+                    { badge: "🏷️ BUY 2 GET 1", percent: 33 },
+                    { badge: "🚚 FREE SHIPPING", percent: 0 },
+                    { badge: "⭐ BESTSELLER", percent: 0 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.badge}
+                      type="button"
+                      onClick={() => {
+                        setProductForm((prev) => ({
+                          ...prev,
+                          offerBadge: preset.badge,
+                          offerDiscountPercent: preset.percent,
+                        }));
+                      }}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        borderRadius: "6px",
+                        background: productForm.offerBadge === preset.badge ? "#5C3A22" : "#FFFFFF",
+                        color: productForm.offerBadge === preset.badge ? "#FFFFFF" : "#5C3A22",
+                        border: "1px solid #D1C7BD",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {preset.badge}
+                    </button>
+                  ))}
+                  {productForm.offerBadge && (
+                    <button
+                      type="button"
+                      onClick={() => setProductForm((prev) => ({ ...prev, offerBadge: "", offerDiscountPercent: 0, offerCouponCode: "" }))}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        borderRadius: "6px",
+                        background: "#FEE2E2",
+                        color: "#DC2626",
+                        border: "1px solid #FECACA",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕ Clear Offer
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1.2fr", gap: "10px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6B6B", marginBottom: "3px" }}>
+                      Offer Badge Text
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 🔥 15% OFF"
+                      value={productForm.offerBadge}
+                      onChange={(e) => setProductForm((prev) => ({ ...prev, offerBadge: e.target.value }))}
+                      style={{ width: "100%", background: "#FFFFFF", border: "1px solid #EDE3D4", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6B6B", marginBottom: "3px" }}>
+                      Discount % (Optional)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="90"
+                      placeholder="e.g. 15"
+                      value={productForm.offerDiscountPercent || ""}
+                      onChange={(e) => setProductForm((prev) => ({ ...prev, offerDiscountPercent: Number(e.target.value) || 0 }))}
+                      style={{ width: "100%", background: "#FFFFFF", border: "1px solid #EDE3D4", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6B6B", marginBottom: "3px" }}>
+                      Linked Coupon (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. BOXCARE10"
+                      value={productForm.offerCouponCode}
+                      onChange={(e) => setProductForm((prev) => ({ ...prev, offerCouponCode: e.target.value.toUpperCase() }))}
+                      style={{ width: "100%", background: "#FFFFFF", border: "1px solid #EDE3D4", borderRadius: "6px", padding: "6px 8px", fontSize: "11px", fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                    />
                   </div>
                 </div>
+
+                {productForm.offerDiscountPercent > 0 && (
+                  <div style={{ marginTop: "8px", fontSize: "10px", color: "#059669", fontWeight: 700 }}>
+                    ✓ With {productForm.offerDiscountPercent}% discount applied: 50 pcs ≈ ₹{Math.round(productForm.price50 * (1 - productForm.offerDiscountPercent / 100))} | 500 pcs ≈ ₹{Math.round(productForm.price500 * (1 - productForm.offerDiscountPercent / 100))}
+                  </div>
+                )}
               </div>
 
               {/* Volume Price Tiers */}
@@ -1104,8 +1463,22 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
                 />
               </div>
 
-              {/* Modal Action Buttons */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px", paddingTop: "14px", borderTop: "1px solid #EDE3D4" }}>
+              {/* Sticky Action Footer */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "10px",
+                  marginTop: "14px",
+                  paddingTop: "14px",
+                  borderTop: "1px solid #EDE3D4",
+                  position: "sticky",
+                  bottom: "-20px",
+                  background: "#FFFFFF",
+                  paddingBottom: "4px",
+                  zIndex: 10,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
@@ -1143,6 +1516,7 @@ export function CategoryProductsView({ category, onBack, onDeleteCategory }: Cat
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

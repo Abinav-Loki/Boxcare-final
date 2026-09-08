@@ -1,28 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
 import { useCart } from "@/components/store/cart-context";
-import { getProductBySlug, getUnitPrice, PRODUCTS } from "@/lib/products-data";
+import { getProductBySlug, getUnitPrice, PRODUCTS, Product } from "@/lib/products-data";
+import { getAdminProductsAction } from "@/app/actions/admin-products";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = (params?.slug as string) || "";
-  const product = getProductBySlug(slug) || PRODUCTS[0];
+  const [product, setProduct] = useState<Product>(() => getProductBySlug(slug) || PRODUCTS[0]);
+  const [allProducts, setAllProducts] = useState<Product[]>(PRODUCTS);
   const { addToCart, toggleWishlist, isInWishlist } = useCart();
   const isWished = isInWishlist(product.id);
 
   const [selectedQty, setSelectedQty] = useState<number>(50);
   const [customQtyInput, setCustomQtyInput] = useState<string>("");
 
+  useEffect(() => {
+    async function fetchDbProduct() {
+      try {
+        const res = await getAdminProductsAction();
+        if (res.success && res.data && res.data.length > 0) {
+          setAllProducts(res.data as any);
+          const matched = res.data.find((p: any) => p.slug === slug || p.id === slug);
+          if (matched) {
+            setProduct(matched as any);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load DB product:", err);
+      }
+    }
+    fetchDbProduct();
+  }, [slug]);
+
   const effectiveQty = customQtyInput ? parseInt(customQtyInput) || 50 : selectedQty;
   const unitPrice = getUnitPrice(product, effectiveQty);
   const totalPrice = unitPrice * effectiveQty;
 
-  const relatedProducts = PRODUCTS.filter(
+  const relatedProducts = allProducts.filter(
     (p) => p.categorySlug === product.categorySlug && p.id !== product.id
   ).slice(0, 4);
 

@@ -17,4 +17,118 @@ import * as Prisma from './internal/prismaNamespaceBrowser'
 export { Prisma }
 export * as $Enums from './enums'
 export * from './enums';
-
+/**
+ * Model User
+ * 
+ */
+export type User = Prisma.UserModel
+/**
+ * Model Customer
+ * 
+ */
+export type Customer = Prisma.CustomerModel
+/**
+ * Model Address
+ * 
+ */
+export type Address = Prisma.AddressModel
+/**
+ * Model Category
+ * 
+ */
+export type Category = Prisma.CategoryModel
+/**
+ * Model Product
+ * 
+ */
+export type Product = Prisma.ProductModel
+/**
+ * Model ProductVariant
+ * 
+ */
+export type ProductVariant = Prisma.ProductVariantModel
+/**
+ * Model ProductImage
+ * 
+ */
+export type ProductImage = Prisma.ProductImageModel
+/**
+ * Model NavigationItem
+ * 
+ */
+export type NavigationItem = Prisma.NavigationItemModel
+/**
+ * Model Cart
+ * 
+ */
+export type Cart = Prisma.CartModel
+/**
+ * Model CartItem
+ * 
+ */
+export type CartItem = Prisma.CartItemModel
+/**
+ * Model Order
+ * 
+ */
+export type Order = Prisma.OrderModel
+/**
+ * Model OrderItem
+ * 
+ */
+export type OrderItem = Prisma.OrderItemModel
+/**
+ * Model Payment
+ * 
+ */
+export type Payment = Prisma.PaymentModel
+/**
+ * Model Shipment
+ * 
+ */
+export type Shipment = Prisma.ShipmentModel
+/**
+ * Model Coupon
+ * 
+ */
+export type Coupon = Prisma.CouponModel
+/**
+ * Model Banner
+ * 
+ */
+export type Banner = Prisma.BannerModel
+/**
+ * Model PageContent
+ * 
+ */
+export type PageContent = Prisma.PageContentModel
+/**
+ * Model Setting
+ * 
+ */
+export type Setting = Prisma.SettingModel
+/**
+ * Model CustomBoxQuote
+ * 
+ */
+export type CustomBoxQuote = Prisma.CustomBoxQuoteModel
+/**
+ * Model CustomerAccount
+ * 
+ */
+export type CustomerAccount = Prisma.CustomerAccountModel
+/**
+ * Model CustomerPasswordResetToken
+ * 
+ */
+export type CustomerPasswordResetToken = Prisma.CustomerPasswordResetTokenModel
+/**
+ * Model Review
+ * 
+ */
+export type Review = Prisma.ReviewModel
+/**
+ * Model Wishlist
+ * 
+ */
+export type Wishlist = Prisma.WishlistModel

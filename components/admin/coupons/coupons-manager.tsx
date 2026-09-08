@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   AdminCoupon,
   CouponDiscountType,
@@ -12,9 +12,25 @@ import { CouponModalForm } from "./coupon-modal-form";
 import { CouponDetailsDrawer } from "./coupon-details-drawer";
 import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { OffersSection } from "./offers-section";
+import {
+  getAdminCouponsAction,
+  createAdminCouponAction,
+  updateAdminCouponAction,
+  deleteAdminCouponAction,
+  toggleCouponActiveAction,
+} from "@/app/actions/admin-coupons";
+import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
+
+function formatDateString(val: any): string {
+  if (!val) return "";
+  if (val instanceof Date) return val.toISOString().split("T")[0];
+  return String(val);
+}
 
 export function CouponsManager() {
+  const { confirmAction, ConfirmDialog } = useAdminConfirm();
   const [coupons, setCoupons] = useState<AdminCoupon[]>(INITIAL_COUPONS_DATA);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | CouponStatus>("ALL");
   const [typeFilter, setTypeFilter] = useState<"ALL" | CouponDiscountType>("ALL");
@@ -34,6 +50,68 @@ export function CouponsManager() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  const loadCoupons = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminCouponsAction();
+      if (res.success && res.data && res.data.length > 0) {
+        const formatted: AdminCoupon[] = res.data.map((c: any) => {
+          const validFrom = c.startDate
+            ? (c.startDate instanceof Date ? c.startDate.toISOString().split("T")[0] : String(c.startDate).split("T")[0])
+            : "2026-01-01";
+          const validUntil = c.endDate
+            ? (c.endDate instanceof Date ? c.endDate.toISOString().split("T")[0] : String(c.endDate).split("T")[0])
+            : "2026-12-31";
+          const createdAtStr = c.createdAt
+            ? (c.createdAt instanceof Date ? c.createdAt.toISOString().split("T")[0] : String(c.createdAt).split("T")[0])
+            : "2026-01-01";
+          const usageCount = Number(c.usedCount ?? c.usageCount ?? 0);
+          const usageLimit = c.usageLimit !== null && c.usageLimit !== undefined ? Number(c.usageLimit) : null;
+
+          let status: CouponStatus = "ACTIVE";
+          if (!c.isActive) {
+            status = "INACTIVE";
+          } else if (c.endDate && new Date(c.endDate).getTime() < Date.now()) {
+            status = "EXPIRED";
+          } else if (usageLimit !== null && usageCount >= usageLimit) {
+            status = "USED_UP";
+          }
+
+          return {
+            id: c.id,
+            code: c.code,
+            title: c.title || (c.code ? `${c.code} Discount Offer` : "Special Promo"),
+            description:
+              c.description ||
+              (c.discountType === "PERCENTAGE"
+                ? `${c.discountValue}% off packaging cartons & boxes`
+                : `Flat ₹${c.discountValue} discount`),
+            discountType: c.discountType as CouponDiscountType,
+            discountValue: Number(c.discountValue) || 0,
+            minOrderValue: c.minOrderRupees ?? (c.minOrderPaise ? Math.round(c.minOrderPaise / 100) : 0),
+            maxDiscountCap: c.maxDiscountRupees ?? (c.maxDiscountPaise ? Math.round(c.maxDiscountPaise / 100) : undefined),
+            usageCount,
+            usageLimit,
+            validFrom,
+            validUntil,
+            status,
+            createdAt: createdAtStr,
+            isFeatured: Boolean(c.isFeatured),
+          };
+        });
+        setCoupons(formatted);
+      }
+    } catch (err) {
+      console.error("Failed to load coupons:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCoupons();
+  }, []);
 
   // 1. KPI Statistics Calculations
   const stats = useMemo(() => {
@@ -71,45 +149,98 @@ export function CouponsManager() {
 
   // 3. Handlers
   const handleSaveCoupon = (coupon: AdminCoupon) => {
-    if (editingCoupon) {
-      setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? coupon : c)));
-      showToast(`✓ Coupon "${coupon.code}" updated successfully!`);
-    } else {
-      setCoupons((prev) => [coupon, ...prev]);
-      showToast(`🎉 Coupon "${coupon.code}" created successfully!`);
-    }
-    setEditingCoupon(null);
+    const payload = {
+      code: coupon.code,
+      discountType: coupon.discountType as any,
+      discountValue: coupon.discountValue,
+      minOrderRupees: coupon.minOrderValue,
+      maxDiscountRupees: coupon.maxDiscountCap,
+      startDate: coupon.validFrom ? new Date(coupon.validFrom) : null,
+      endDate: coupon.validUntil ? new Date(coupon.validUntil) : null,
+      usageLimit: coupon.usageLimit,
+      isActive: coupon.status === "ACTIVE",
+    };
+
+    confirmAction({
+      title: editingCoupon ? `Update Coupon: ${coupon.code}` : `Create Coupon: ${coupon.code}`,
+      message: "Are you sure you want to do this?",
+      description: `Save promo discount details for "${coupon.code}" to the database.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        if (editingCoupon) {
+          setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? coupon : c)));
+          showToast(`✓ Coupon "${coupon.code}" updated successfully!`);
+          const res = await updateAdminCouponAction(coupon.id, payload);
+          if (!res.success) {
+            showToast(`⚠️ Sync notice: ${res.error}`);
+            loadCoupons();
+          }
+        } else {
+          setCoupons((prev) => [coupon, ...prev]);
+          showToast(`🎉 Coupon "${coupon.code}" created successfully!`);
+          const res = await createAdminCouponAction(payload);
+          if (!res.success) {
+            showToast(`⚠️ Sync notice: ${res.error}`);
+            loadCoupons();
+          }
+        }
+        setEditingCoupon(null);
+      },
+    });
   };
 
   const handleToggleStatus = (id: string) => {
-    setCoupons((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const newStatus: CouponStatus = c.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-          showToast(`Coupon "${c.code}" is now ${newStatus === "ACTIVE" ? "Enabled ▶️" : "Disabled ⏸️"}`);
-          return { ...c, status: newStatus };
-        }
-        return c;
-      })
-    );
+    const target = coupons.find((c) => c.id === id);
+    if (!target) return;
+    const newStatus: CouponStatus = target.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    const newActive = newStatus === "ACTIVE";
 
-    // Update viewing coupon if open
-    if (viewingCoupon && viewingCoupon.id === id) {
-      setViewingCoupon((prev) =>
-        prev ? { ...prev, status: prev.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" } : null
-      );
-    }
+    confirmAction({
+      title: `${newActive ? "Activate" : "Deactivate"} Coupon: ${target.code}`,
+      message: "Are you sure you want to do this?",
+      description: `Change coupon "${target.code}" status to "${newStatus}" in the database.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setCoupons((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+        );
+        showToast(`Coupon "${target.code}" is now ${newStatus === "ACTIVE" ? "Enabled ▶️" : "Disabled ⏸️"}`);
+
+        if (viewingCoupon && viewingCoupon.id === id) {
+          setViewingCoupon((prev) => (prev ? { ...prev, status: newStatus } : null));
+        }
+
+        const res = await toggleCouponActiveAction(id, newActive);
+        if (!res.success) {
+          showToast(`⚠️ Sync notice: ${res.error}`);
+          loadCoupons();
+        }
+      },
+    });
   };
 
-  const handleConfirmDelete = () => {
-    if (!deletingCoupon) return;
-    const code = deletingCoupon.code;
-    setCoupons((prev) => prev.filter((c) => c.id !== deletingCoupon.id));
-    if (viewingCoupon && viewingCoupon.id === deletingCoupon.id) {
-      setViewingCoupon(null);
-    }
-    setDeletingCoupon(null);
-    showToast(`🗑️ Coupon "${code}" deleted successfully.`);
+  const handleDeleteCoupon = (target: { id: string; code: string }) => {
+    confirmAction({
+      title: `Delete Coupon: ${target.code}`,
+      message: "This action cannot be undone. Are you sure you want to delete this?",
+      description: `Coupon "${target.code}" will be permanently removed from the database.`,
+      confirmLabel: "Continue to Verify",
+      isDelete: true,
+      onConfirm: async () => {
+        setCoupons((prev) => prev.filter((c) => c.id !== target.id));
+        if (viewingCoupon && viewingCoupon.id === target.id) {
+          setViewingCoupon(null);
+        }
+        setDeletingCoupon(null);
+        showToast(`🗑️ Coupon "${target.code}" deleted.`);
+
+        const res = await deleteAdminCouponAction(target.id);
+        if (!res.success) {
+          showToast(`⚠️ Sync notice: ${res.error}`);
+          loadCoupons();
+        }
+      },
+    });
   };
 
   const handleExportCSV = () => {
@@ -315,7 +446,7 @@ export function CouponsManager() {
             <span style={{ fontSize: "18px" }}>⚡</span>
           </div>
           <div style={{ fontSize: "24px", fontWeight: 900, color: "#D68A45", marginTop: "4px" }}>
-            {stats.totalRedemptions.toLocaleString()}
+            {(stats.totalRedemptions ?? 0).toLocaleString()}
           </div>
           <span style={{ fontSize: "11px", color: "#8B5E3C" }}>Customer orders saved</span>
         </div>
@@ -549,7 +680,7 @@ export function CouponsManager() {
                           </button>
                         </div>
                         <div style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>
-                          Created: {c.createdAt}
+                          Created: {formatDateString(c.createdAt)}
                         </div>
                       </td>
 
@@ -557,7 +688,7 @@ export function CouponsManager() {
                       <td style={{ padding: "14px 18px" }}>
                         <div style={{ fontWeight: 800, color: "#2E1A0C" }}>{c.title}</div>
                         <div style={{ fontSize: "11px", color: "#666", marginTop: "2px" }}>
-                          Min order: ₹{c.minOrderValue.toLocaleString()}
+                          Min order: ₹{(c.minOrderValue ?? 0).toLocaleString()}
                           {c.maxDiscountCap ? ` • Max cap: ₹${c.maxDiscountCap}` : ""}
                         </div>
                       </td>
@@ -611,7 +742,7 @@ export function CouponsManager() {
                       {/* Column 6: Validity Range */}
                       <td style={{ padding: "14px 18px" }}>
                         <div style={{ fontSize: "12px", color: "#2E1A0C", fontWeight: 600 }}>
-                          {c.validFrom} → {c.validUntil}
+                          {formatDateString(c.validFrom)} → {formatDateString(c.validUntil)}
                         </div>
                         {isExpiringSoon && (
                           <span style={{ fontSize: "10px", fontWeight: 800, color: "#DC2626", background: "#FEE2E2", padding: "1px 6px", borderRadius: "4px" }}>
@@ -719,7 +850,7 @@ export function CouponsManager() {
 
                           {/* Delete */}
                           <button
-                            onClick={() => setDeletingCoupon({ id: c.id, code: c.code })}
+                            onClick={() => handleDeleteCoupon({ id: c.id, code: c.code })}
                             title="Delete Coupon"
                             style={{
                               padding: "5px 8px",
@@ -839,16 +970,11 @@ export function CouponsManager() {
           setIsFormOpen(true);
         }}
         onToggleStatus={handleToggleStatus}
-        onDelete={(id, code) => setDeletingCoupon({ id, code })}
+        onDelete={(id, code) => handleDeleteCoupon({ id, code })}
       />
 
-      {/* 9. Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deletingCoupon !== null}
-        couponCode={deletingCoupon?.code || ""}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeletingCoupon(null)}
-      />
+      {/* Global 2-Step Action & Password Confirmation Dialog */}
+      {ConfirmDialog}
     </div>
   );
 }

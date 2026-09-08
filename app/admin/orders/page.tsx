@@ -1,11 +1,11 @@
-import { RoutePlaceholder } from "@/components/common/route-placeholder";
+import React from "react";
+import { OrdersManager } from "@/components/admin/orders/orders-manager";
+
+export const metadata = {
+  title: "Orders Pipeline | BoxCare Admin",
+  description: "View customer orders, immutable snapshot items, update fulfillment statuses, and manage payments.",
+};
 
 export default function AdminOrdersPage() {
-  return (
-    <RoutePlaceholder
-      owner="Developer C"
-      title="Admin Orders"
-      description="Order list with filters, customer info, totals, payment status, shipment status, and admin actions."
-    />
-  );
+  return <OrdersManager />;
 }

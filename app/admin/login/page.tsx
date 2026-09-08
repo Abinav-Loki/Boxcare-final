@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { verifyAdminLoginPasswordAction } from "@/app/actions/admin-auth";
+
 export default function AdminLoginPage() {
   const router = useRouter();
 
@@ -23,11 +25,11 @@ export default function AdminLoginPage() {
 
   const handleFillDemo = () => {
     setEmail("admin@boxcare.in");
-    setPassword("boxcare@2026");
+    setPassword("boxcare");
     setErrorMsg("");
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
@@ -39,14 +41,23 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
 
-    // Simulate authentication check (Frontend UI demo only)
-    setTimeout(() => {
+    try {
+      const res = await verifyAdminLoginPasswordAction(email.trim(), password.trim());
+      if (!res.success) {
+        setIsLoading(false);
+        setErrorMsg(res.error || "Invalid admin credentials.");
+        return;
+      }
+
       setIsLoading(false);
       setSuccessMsg("Authentication verified. Redirecting to Admin Dashboard...");
       setTimeout(() => {
         router.push("/admin/dashboard");
-      }, 1000);
-    }, 800);
+      }, 700);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg(err.message || "Authentication failed. Please try again.");
+    }
   };
 
   const handleForgotSubmit = (e: React.FormEvent) => {

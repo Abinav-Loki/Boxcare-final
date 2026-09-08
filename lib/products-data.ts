@@ -36,6 +36,10 @@ export interface Product {
   rating?: number;
   reviewsCount?: number;
   isPopular?: boolean;
+  offerBadge?: string;
+  offerDiscountPercent?: number;
+  status?: "ACTIVE" | "INACTIVE" | "DRAFT" | "ARCHIVED" | string;
+  isHidden?: boolean;
 }
 
 export const PRODUCTS: Product[] = [
@@ -1564,15 +1568,6 @@ export const CATEGORIES = [
     description: "Durable corrugated rolls for wrapping, cushioning, and packaging.",
     icon: "disc",
     image: "/images/corrugated-rolls.png",
-    itemCount: 2
-  },
-  {
-    id: "corrugated-sheets",
-    name: "Corrugated Sheets",
-    slug: "corrugated-sheets",
-    description: "High-strength corrugated sheets for packaging and industrial use.",
-    icon: "file-text",
-    image: "/images/corrugated-sheets.png",
     itemCount: 2
   },
   {

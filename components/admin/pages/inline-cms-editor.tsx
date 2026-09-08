@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { StorefrontPage, STOREFRONT_PAGES_LIST } from "./pages-types";
-import { useLiveCms } from "@/lib/cms-data";
+import { useLiveCms, publishDraftCms } from "@/lib/cms-data";
+import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
 
 interface InlineCmsEditorProps {
   page: StorefrontPage;
@@ -29,6 +30,7 @@ const STOREFRONT_MEDIA_LIBRARY = [
 ];
 
 export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
+  const { confirmAction, ConfirmDialog } = useAdminConfirm();
   const { resetCms, undo, redo, canUndo, canRedo } = useLiveCms();
   const [currentRoute, setCurrentRoute] = useState<string>(page.path || "/");
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -81,14 +83,12 @@ export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
   }, [canUndo, canRedo]);
 
   const handleUndoAction = () => {
-    undo();
     iframeRef.current?.contentWindow?.postMessage({ type: "TRIGGER_UNDO" }, "*");
     setSaveStatus("↩️ Undo applied");
     setTimeout(() => setSaveStatus(null), 2000);
   };
 
   const handleRedoAction = () => {
-    redo();
     iframeRef.current?.contentWindow?.postMessage({ type: "TRIGGER_REDO" }, "*");
     setSaveStatus("↪️ Redo applied");
     setTimeout(() => setSaveStatus(null), 2000);
@@ -103,6 +103,8 @@ export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
         handleUndoAction();
       } else if (event.data.type === "KEYBOARD_REDO") {
         handleRedoAction();
+      } else if (event.data.type === "CMS_HISTORY_UPDATED") {
+        // Studio toolbar sync
       } else if (event.data.type === "CMS_TEXT_CHANGED") {
         // Silently sync in the background without intrusive popups while typing/editing
       } else if (event.data.type === "CMS_IMAGE_CHANGED") {
@@ -229,22 +231,47 @@ export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
   };
 
   const handleSave = () => {
-    setSaveStatus("💾 All text & image changes saved to live store data successfully!");
-    setTimeout(() => setSaveStatus(null), 3500);
+    confirmAction({
+      title: "Save CMS Changes",
+      message: "Are you sure you want to save these CMS changes?",
+      description: "Save all current text edits, image replacements, and layout styling to draft.",
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setSaveStatus("💾 All text & image changes saved to draft successfully!");
+        setTimeout(() => setSaveStatus(null), 3500);
+      },
+    });
   };
 
   const handlePublish = () => {
-    setSaveStatus("🚀 Published all changes to live storefront successfully!");
-    setTimeout(() => setSaveStatus(null), 3500);
+    confirmAction({
+      title: "Publish Storefront CMS Live",
+      message: "Are you sure you want to publish these changes live to the customer storefront?",
+      description: "All visual layout modifications, text updates, image replacements, and custom styling will become live and visible to customer storefront shoppers immediately.",
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        publishDraftCms();
+        iframeRef.current?.contentWindow?.postMessage({ type: "CMS_PUBLISHED" }, "*");
+        setSaveStatus("🚀 Published all changes to live storefront successfully!");
+        setTimeout(() => setSaveStatus(null), 4000);
+      },
+    });
   };
 
   const handleReset = () => {
-    if (confirm("Reset all storefront content back to default factory settings?")) {
-      resetCms();
-      setIframeKey(Date.now());
-      setSaveStatus("Default storefront layout restored.");
-      setTimeout(() => setSaveStatus(null), 3000);
-    }
+    confirmAction({
+      title: "Reset Storefront Layout to Factory Defaults",
+      message: "This action cannot be undone. Are you sure you want to reset all storefront content back to default factory settings?",
+      description: "All custom text, images, and styling will be permanently restored to factory defaults and published live.",
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        resetCms();
+        publishDraftCms();
+        setIframeKey(Date.now());
+        setSaveStatus("Default storefront layout restored and published.");
+        setTimeout(() => setSaveStatus(null), 3000);
+      },
+    });
   };
 
   const reloadPreview = () => {
@@ -1219,6 +1246,9 @@ export function InlineCmsEditor({ page, onBack }: InlineCmsEditorProps) {
         accept="image/png, image/jpeg, image/webp, image/svg+xml, image/gif"
         style={{ display: "none" }}
       />
+
+      {/* Admin Action Confirmation Dialog */}
+      {ConfirmDialog}
     </div>
   );
 }

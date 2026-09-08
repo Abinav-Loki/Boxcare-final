@@ -1,38 +1,62 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getAdminDashboardMetricsAction } from "@/app/actions/admin-dashboard";
 
 export function MetricsGrid() {
+  const [metricsData, setMetricsData] = useState<any>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await getAdminDashboardMetricsAction();
+        if (res.success && res.data) {
+          setMetricsData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard metrics:", err);
+      }
+    }
+    load();
+  }, []);
+
+  const totalRev = metricsData ? `₹${(metricsData.totalRevenueRupees ?? 0).toLocaleString("en-IN")}` : "₹0";
+  const totalOrders = metricsData ? String(metricsData.totalOrders ?? 0) : "0";
+  const pendingOrders = metricsData ? `${metricsData.pendingOrdersCount ?? 0} to fulfill` : "All clear";
+  const activeProds = metricsData ? `${metricsData.activeProducts ?? 0} SKUs` : "0 SKUs";
+  const totalCats = metricsData ? `${metricsData.totalCategories ?? 0} Categories` : "0 Categories";
+  const lowStock = metricsData ? `${metricsData.lowStockVariantsCount ?? 0} low stock` : "0 low stock";
+
   const metrics = [
     {
-      title: "Total Revenue",
-      value: "₹1,48,920",
-      change: "+14.8%",
-      period: "vs last month",
+      title: "Total Confirmed Revenue",
+      value: totalRev,
+      change: "Live DB",
+      period: "Verified Payments",
       isPositive: true,
       icon: "💰",
     },
     {
-      title: "Total Orders",
-      value: "142",
-      change: "+22%",
-      period: "12 to dispatch",
+      title: "Total Customer Orders",
+      value: totalOrders,
+      change: "Realtime",
+      period: pendingOrders,
       isPositive: true,
       icon: "📦",
     },
     {
-      title: "Avg. Order Value",
-      value: "₹1,048",
-      change: "+6.2%",
-      period: "per tier order",
+      title: "Catalog Categories",
+      value: totalCats,
+      change: "Active",
+      period: "Product Taxonomy",
       isPositive: true,
-      icon: "📈",
+      icon: "🗂️",
     },
     {
-      title: "Active Products",
-      value: "28 SKUs",
-      change: "4 Categories",
-      period: "2 low stock",
+      title: "Active Products in Catalog",
+      value: activeProds,
+      change: `${metricsData?.totalProducts || 0} Total`,
+      period: lowStock,
       isPositive: true,
       icon: "🏷️",
     },

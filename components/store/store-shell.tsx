@@ -10,21 +10,25 @@ import { WishlistDrawer } from "./wishlist-drawer";
 import { QuickViewModal } from "./quick-view-modal";
 import { CmsEditorBridge } from "./cms-editor-bridge";
 
+import { CustomerAuthProvider } from "@/lib/auth/customer-auth-context";
+
 export function StoreShell({ children }: { children: React.ReactNode }) {
   return (
-    <CartProvider>
-      <Suspense fallback={null}>
-        <CmsEditorBridge />
-      </Suspense>
-      <div className="flex min-h-screen flex-col bg-white">
-        <AnnouncementBar />
-        <Navbar />
-        <main className="flex flex-1 flex-col">{children}</main>
-        <Footer />
-        <CartDrawer />
-        <WishlistDrawer />
-        <QuickViewModal />
-      </div>
-    </CartProvider>
+    <CustomerAuthProvider>
+      <CartProvider>
+        <Suspense fallback={null}>
+          <CmsEditorBridge />
+        </Suspense>
+        <div className="flex min-h-screen flex-col bg-white">
+          <AnnouncementBar />
+          <Navbar />
+          <main className="flex flex-1 flex-col">{children}</main>
+          <Footer />
+          <CartDrawer />
+          <WishlistDrawer />
+          <QuickViewModal />
+        </div>
+      </CartProvider>
+    </CustomerAuthProvider>
   );
 }

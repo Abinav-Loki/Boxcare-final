@@ -1,19 +1,56 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { StorefrontPage, STOREFRONT_PAGES_LIST } from "./pages-types";
 import { InlineCmsEditor } from "./inline-cms-editor";
+import { getAdminPagesAction, updateAdminPageAction } from "@/app/actions/admin-pages";
+import { useAdminConfirm } from "@/components/admin/common/admin-confirm-dialog";
 
 export function PagesManager() {
+  const { confirmAction, ConfirmDialog } = useAdminConfirm();
   const [pages, setPages] = useState<StorefrontPage[]>(STOREFRONT_PAGES_LIST);
+  const [isLoading, setIsLoading] = useState(false);
   const [editingPage, setEditingPage] = useState<StorefrontPage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "CORE" | "COMMERCE" | "POLICY">("ALL");
 
+  const loadPages = async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminPagesAction();
+      if (res.success && res.data && res.data.length > 0) {
+        // Merge with existing meta
+        const dbMap = new Map(res.data.map((p: any) => [p.slug, p]));
+        setPages((prev) =>
+          prev.map((item) => {
+            const dbPage = dbMap.get(item.slug);
+            if (dbPage) {
+              return {
+                ...item,
+                title: dbPage.title,
+                status: dbPage.isActive ? "PUBLISHED" : "DRAFT",
+                lastModified: new Date(dbPage.updatedAt).toLocaleDateString("en-IN"),
+              };
+            }
+            return item;
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to load CMS pages:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPages();
+  }, []);
+
   // If a page is chosen for visual CMS editing, open the inline studio
   if (editingPage) {
-    return <InlineCmsEditor page={editingPage} onBack={() => setEditingPage(null)} />;
+    return <InlineCmsEditor page={editingPage} onBack={() => { setEditingPage(null); loadPages(); }} />;
   }
 
   const filteredPages = pages.filter((page) => {
@@ -25,16 +62,35 @@ export function PagesManager() {
   });
 
   const handleToggleStatus = (id: string) => {
-    setPages((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              status: p.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
-            }
-          : p
-      )
-    );
+    const target = pages.find((p) => p.id === id);
+    if (!target) return;
+    const newStatus = target.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
+    const isActive = newStatus === "PUBLISHED";
+
+    confirmAction({
+      title: `${isActive ? "Publish" : "Draft"} Page: ${target.title}`,
+      message: "Are you sure you want to do this?",
+      description: `Change page status to "${newStatus}" in the database.`,
+      confirmLabel: "Continue to Verify",
+      onConfirm: async () => {
+        setPages((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status: newStatus,
+                }
+              : p
+          )
+        );
+
+        await updateAdminPageAction(target.slug, {
+          title: target.title,
+          content: target.title,
+          isActive,
+        });
+      },
+    });
   };
 
   return (
@@ -260,6 +316,9 @@ export function PagesManager() {
           </table>
         </div>
       </div>
+
+      {/* Global 2-Step Action & Password Confirmation Dialog */}
+      {ConfirmDialog}
     </div>
   );
 }
