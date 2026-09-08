@@ -266,29 +266,59 @@ export function useAdminConfirm() {
               </div>
             </div>
           ) : (
-            /* Step 2: Password Prompt */
+            /* Step 2: Password Prompt & Optional Commit Note */
             <form onSubmit={handleVerifyAndExecute}>
-              {commitNote && (
-                <div
+              {/* Optional Commit Note in Verification */}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  htmlFor="admin-verify-commit-note"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     fontSize: "12px",
+                    fontWeight: 700,
                     color: "#5C3A22",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span>Commit / Change Log Note:</span>
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#8E8880" }}>Optional</span>
+                </label>
+                <textarea
+                  id="admin-verify-commit-note"
+                  rows={2}
+                  value={commitNote}
+                  onChange={(e) => setCommitNote(e.target.value)}
+                  placeholder="Describe what was edited or changed (e.g. updated price, fixed typo, new banner)..."
+                  disabled={isVerifying}
+                  style={{
+                    width: "100%",
+                    fontSize: "12px",
+                    color: "#2B2B2B",
                     background: "#F7F2EC",
                     border: "1px solid #EDE3D4",
                     borderRadius: "8px",
                     padding: "8px 12px",
-                    marginBottom: "14px",
-                    fontWeight: 500,
-                    lineHeight: 1.4,
+                    boxSizing: "border-box",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                    transition: "border-color 0.2s, background-color 0.2s",
                   }}
-                >
-                  <span style={{ fontWeight: 700 }}>Commit: </span>
-                  {commitNote}
-                </div>
-              )}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#5C3A22";
+                    e.currentTarget.style.backgroundColor = "#FFFFFF";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#EDE3D4";
+                    e.currentTarget.style.backgroundColor = "#F7F2EC";
+                  }}
+                />
+              </div>
 
-              <p style={{ fontSize: "13px", color: "#4A4A4A", margin: "0 0 14px 0", lineHeight: 1.4 }}>
-                Please enter the <strong>Admin Verification Password</strong> to authorize this database change:
+              <p style={{ fontSize: "13px", color: "#4A4A4A", margin: "0 0 10px 0", lineHeight: 1.4 }}>
+                Enter <strong>Admin Verification Password</strong> to apply changes:
               </p>
 
               {errorMessage && (
