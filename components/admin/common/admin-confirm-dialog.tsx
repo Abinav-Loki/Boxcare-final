@@ -10,13 +10,14 @@ export interface AdminConfirmOptions {
   isDestructive?: boolean;
   isDelete?: boolean;
   confirmLabel?: string;
-  onConfirm: () => Promise<void> | void;
+  onConfirm: (commitNote?: string) => Promise<void> | void;
 }
 
 export function useAdminConfirm() {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<"CONFIRM" | "PASSWORD">("CONFIRM");
   const [options, setOptions] = useState<AdminConfirmOptions | null>(null);
+  const [commitNote, setCommitNote] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -26,6 +27,7 @@ export function useAdminConfirm() {
 
   const confirmAction = useCallback((opts: AdminConfirmOptions) => {
     setOptions(opts);
+    setCommitNote(opts.description || opts.message || "Commit changes to database.");
     setStep("CONFIRM");
     setPassword("");
     setShowPassword(false);
@@ -37,6 +39,7 @@ export function useAdminConfirm() {
   const handleClose = useCallback(() => {
     setIsOpen(false);
     setPassword("");
+    setCommitNote("");
     setErrorMessage(null);
     setIsVerifying(false);
     setOptions(null);
@@ -178,21 +181,50 @@ export function useAdminConfirm() {
               <p style={{ fontSize: "14px", color: "#2B2B2B", fontWeight: 600, margin: "0 0 8px 0", lineHeight: 1.5 }}>
                 {options.message || defaultConfirmMessage}
               </p>
-              {options.description && (
-                <div
+              {/* Typable Commit Note / Summary */}
+              <div style={{ marginTop: "14px" }}>
+                <label
+                  htmlFor="admin-commit-input"
                   style={{
+                    display: "block",
                     fontSize: "12px",
-                    color: "#6B6B6B",
-                    background: "#F7F2EC",
-                    border: "1px solid #EDE3D4",
-                    borderRadius: "8px",
-                    padding: "10px 12px",
-                    marginTop: "10px",
+                    fontWeight: 700,
+                    color: "#5C3A22",
+                    marginBottom: "6px",
                   }}
                 >
-                  {options.description}
-                </div>
-              )}
+                  Commit Note / Action Summary:
+                </label>
+                <textarea
+                  id="admin-commit-input"
+                  rows={2}
+                  value={commitNote}
+                  onChange={(e) => setCommitNote(e.target.value)}
+                  placeholder="Type commit summary or reason for change..."
+                  style={{
+                    width: "100%",
+                    fontSize: "13px",
+                    color: "#2B2B2B",
+                    background: "#F7F2EC",
+                    border: "1.5px solid #EDE3D4",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    boxSizing: "border-box",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                    transition: "border-color 0.2s, background-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#5C3A22";
+                    e.currentTarget.style.backgroundColor = "#FFFFFF";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#EDE3D4";
+                    e.currentTarget.style.backgroundColor = "#F7F2EC";
+                  }}
+                />
+              </div>
 
               {/* Action Buttons for Step 1 */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "22px" }}>
@@ -236,6 +268,25 @@ export function useAdminConfirm() {
           ) : (
             /* Step 2: Password Prompt */
             <form onSubmit={handleVerifyAndExecute}>
+              {commitNote && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#5C3A22",
+                    background: "#F7F2EC",
+                    border: "1px solid #EDE3D4",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    marginBottom: "14px",
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <span style={{ fontWeight: 700 }}>Commit: </span>
+                  {commitNote}
+                </div>
+              )}
+
               <p style={{ fontSize: "13px", color: "#4A4A4A", margin: "0 0 14px 0", lineHeight: 1.4 }}>
                 Please enter the <strong>Admin Verification Password</strong> to authorize this database change:
               </p>
