@@ -23,12 +23,6 @@ export default function AdminLoginPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
 
-  const handleFillDemo = () => {
-    setEmail("admin@boxcare.in");
-    setPassword("boxcare");
-    setErrorMsg("");
-  };
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
@@ -166,46 +160,6 @@ export default function AdminLoginPage() {
           <p style={{ fontSize: "13px", color: "#A8988B", margin: 0 }}>
             Restricted access for store managers, inventory and logistics teams.
           </p>
-        </div>
-
-        {/* Demo Helper Banner */}
-        <div
-          style={{
-            backgroundColor: "rgba(214, 138, 69, 0.08)",
-            border: "1px dashed rgba(214, 138, 69, 0.35)",
-            borderRadius: "10px",
-            padding: "10px 14px",
-            marginBottom: "22px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontSize: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#E0D2C3" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D68A45" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-            <span>Demo UI Mode</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            style={{
-              background: "#D68A45",
-              color: "#181513",
-              border: "none",
-              borderRadius: "6px",
-              padding: "4px 10px",
-              fontSize: "11px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Auto-fill Demo
-          </button>
         </div>
 
         {/* Error / Success Notifications */}
