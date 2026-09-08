@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   verifyAdminActionPassword,
   verifyAdminLoginPassword,
+  verifyAdminLoginCredentials,
   updateAdminLoginPassword,
   updateAdminActionPassword,
 } from "@/lib/auth/admin-passwords";
@@ -27,19 +28,19 @@ export async function verifyAdminActionPasswordAction(password: string): Promise
 }
 
 /**
- * Verifies Admin Login Password during login.
+ * Verifies Admin Login Credentials (Email must be admin@boxcare.in and Password must match) during login.
  */
 export async function verifyAdminLoginPasswordAction(
   email: string,
   password: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!password) {
-      return { success: false, error: "Password is required" };
+    if (!email || !password) {
+      return { success: false, error: "Both admin email and password are required" };
     }
-    const isValid = await verifyAdminLoginPassword(password);
+    const isValid = await verifyAdminLoginCredentials(email, password);
     if (!isValid) {
-      return { success: false, error: "Invalid admin credentials" };
+      return { success: false, error: "Invalid admin credentials. Only authorized admin email is permitted." };
     }
     return { success: true };
   } catch (err: any) {

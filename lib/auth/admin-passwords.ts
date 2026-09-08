@@ -43,6 +43,16 @@ async function getOrInitPasswordHash(key: string): Promise<string> {
   }
 }
 
+const AUTHORIZED_ADMIN_EMAIL = "admin@boxcare.in";
+
+/**
+ * Validates whether the email matches the authorized corporate admin email (admin@boxcare.in).
+ */
+export function isAuthorizedAdminEmail(email: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  return email.trim().toLowerCase() === AUTHORIZED_ADMIN_EMAIL.toLowerCase();
+}
+
 /**
  * Verifies the candidate password against the Admin Login password hash in database.
  */
@@ -50,6 +60,16 @@ export async function verifyAdminLoginPassword(password: string): Promise<boolea
   if (!password || typeof password !== "string") return false;
   const hash = await getOrInitPasswordHash(LOGIN_PASSWORD_KEY);
   return bcrypt.compare(password, hash);
+}
+
+/**
+ * Verifies both Admin Email (must be admin@boxcare.in) and Admin Login Password against PostgreSQL.
+ */
+export async function verifyAdminLoginCredentials(email: string, password: string): Promise<boolean> {
+  if (!isAuthorizedAdminEmail(email)) {
+    return false;
+  }
+  return verifyAdminLoginPassword(password);
 }
 
 /**
